@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -15,12 +14,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
@@ -143,32 +143,38 @@ fun AppGridByBucket(
     onAppClick: (AppInfo) -> Unit,
     onAppLongClick: (AppInfo) -> Unit
 ) {
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(bottom = 16.dp)
-    ) {
-        // Sort buckets by their order in the enum
-        val sortedBuckets = RecencyBucket.values().filter { appsByBucket.containsKey(it) }
+    // Sort buckets by their order in the enum
+    val sortedBuckets = RecencyBucket.entries.filter {
+        appsByBucket.containsKey(it) && (appsByBucket[it]?.isNotEmpty() == true)
+    }
 
-        for (bucket in sortedBuckets) {
-            val apps = appsByBucket[bucket] ?: continue
-            if (apps.isEmpty()) continue
+    // Create pager state
+    val pagerState = rememberPagerState(pageCount = { sortedBuckets.size })
 
-            // Bucket header
-            stickyHeader {
+    Column(modifier = Modifier.fillMaxSize()) {
+        // Horizontal pager for swiping between buckets
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(bottom = 16.dp)
+        ) { page ->
+            val bucket = sortedBuckets[page]
+            val apps = appsByBucket[bucket] ?: emptyList()
+
+            Column(modifier = Modifier.fillMaxSize()) {
+                // Bucket header
                 BucketHeader(bucket = bucket)
-            }
 
-            // Apps in this bucket
-            item {
+                // Apps in this bucket
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(4),
-                    contentPadding = PaddingValues(horizontal = 8.dp),
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(100.dp * ((apps.size / 4) + if (apps.size % 4 > 0) 1 else 0))
+                        .weight(1f)
                 ) {
                     items(apps) { app ->
                         AppIcon(
@@ -178,10 +184,6 @@ fun AppGridByBucket(
                         )
                     }
                 }
-            }
-
-            item {
-                Spacer(modifier = Modifier.height(16.dp))
             }
         }
     }
