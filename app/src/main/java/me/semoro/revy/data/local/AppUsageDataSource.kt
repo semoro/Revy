@@ -6,6 +6,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.pm.ResolveInfo
 import android.graphics.drawable.Drawable
+import androidx.core.graphics.drawable.toBitmap
 import dagger.hilt.android.qualifiers.ApplicationContext
 import me.semoro.revy.data.model.AppInfo
 import javax.inject.Inject
@@ -77,7 +78,7 @@ class AppUsageDataSourceImpl @Inject constructor(
                 AppInfo(
                     packageName = packageName,
                     label = appInfo.loadLabel(packageManager).toString(),
-                    icon = appInfo.loadIcon(packageManager),
+                    icon = appInfo.loadIcon(packageManager).toBitmap(),
                     lastUsedTimestamp = lastUsedTime
                 )
             } catch (e: Exception) {

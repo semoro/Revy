@@ -1,5 +1,6 @@
 package me.semoro.revy.data.model
 
+import android.graphics.Bitmap
 import android.graphics.drawable.Drawable
 
 /**
@@ -14,7 +15,7 @@ import android.graphics.drawable.Drawable
 data class AppInfo(
     val packageName: String,
     val label: String,
-    val icon: Drawable,
+    val icon: Bitmap,
     val lastUsedTimestamp: Long,
     val isPinned: Boolean = false
 )

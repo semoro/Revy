@@ -1,8 +1,9 @@
 package me.semoro.revy.ui.home
 
+import android.graphics.Bitmap
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -22,7 +24,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -58,34 +59,36 @@ fun HomeScreen(
     val appLauncherUtils = remember { AppLauncherUtils(context) }
     val uiState by viewModel.uiState.collectAsState()
 
-    Column(
-        modifier = Modifier.fillMaxSize()
-    ) {
-        // Pinned apps strip
-        if (uiState.pinnedApps.isNotEmpty()) {
-            PinnedAppsStrip(
-                pinnedApps = uiState.pinnedApps,
-                onAppClick = { appLauncherUtils.launchApp(it.packageName) },
-                onAppLongClick = { viewModel.togglePinApp(it.packageName, false) }
-            )
+    Box(modifier = Modifier.fillMaxSize().systemBarsPadding()) {
+        Column(
+            modifier = Modifier.fillMaxSize()
+        ) {
+            // Pinned apps strip
+            if (uiState.pinnedApps.isNotEmpty()) {
+                PinnedAppsStrip(
+                    pinnedApps = uiState.pinnedApps,
+                    onAppClick = { appLauncherUtils.launchApp(it.packageName) },
+                    onAppLongClick = { viewModel.togglePinApp(it.packageName, false) }
+                )
 
-            Spacer(modifier = Modifier.height(8.dp))
-        }
-
-        // App grid by recency bucket
-        if (uiState.isLoading) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator()
+                Spacer(modifier = Modifier.height(8.dp))
             }
-        } else {
-            AppGridByBucket(
-                appsByBucket = uiState.appsByBucket,
-                onAppClick = { appLauncherUtils.launchApp(it.packageName) },
-                onAppLongClick = { viewModel.togglePinApp(it.packageName, !it.isPinned) }
-            )
+
+            // App grid by recency bucket
+            if (uiState.isLoading) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
+            } else {
+                AppGridByBucket(
+                    appsByBucket = uiState.appsByBucket,
+                    onAppClick = { appLauncherUtils.launchApp(it.packageName) },
+                    onAppLongClick = { viewModel.togglePinApp(it.packageName, !it.isPinned) }
+                )
+            }
         }
     }
 }
@@ -199,7 +202,7 @@ fun BucketHeader(bucket: RecencyBucket) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.9f))
+            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.95f))
             .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
         Text(
@@ -217,6 +220,7 @@ fun BucketHeader(bucket: RecencyBucket) {
  * @param onClick Callback when the icon is clicked
  * @param onLongClick Callback when the icon is long-clicked
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun AppIcon(
     app: AppInfo,
@@ -227,25 +231,23 @@ fun AppIcon(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
             .width(72.dp)
-            .clickable { onClick() }
+            .combinedClickable(
+                onClick = { onClick() },
+                onLongClick = { onLongClick() }
+            )
     ) {
-        Card(
-            modifier = Modifier
-                .size(56.dp)
-                .clip(CircleShape)
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
         ) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                androidx.compose.foundation.Image(
-                    bitmap = app.icon.toBitmap().asImageBitmap(),
-                    contentDescription = app.label,
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clip(CircleShape)
-                )
-            }
+            val bitmap = remember(app) { app.icon.asImageBitmap() }
+            androidx.compose.foundation.Image(
+                bitmap = bitmap,
+                contentDescription = app.label,
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(CircleShape)
+            )
         }
 
         Spacer(modifier = Modifier.height(4.dp))
