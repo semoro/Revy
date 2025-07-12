@@ -8,7 +8,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -34,6 +36,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
@@ -123,6 +126,7 @@ fun PinnedAppsStrip(
         ) {
             items(pinnedApps) { app ->
                 AppIcon(
+                    modifier = Modifier,
                     app = app,
                     onClick = { onAppClick(app) },
                     onLongClick = { onAppLongClick(app) }
@@ -146,45 +150,73 @@ fun AppGridByBucket(
     onAppClick: (AppInfo) -> Unit,
     onAppLongClick: (AppInfo) -> Unit
 ) {
-    // Sort buckets by their order in the enum
-    val sortedBuckets = RecencyBucket.entries.filter {
-        appsByBucket.containsKey(it) && (appsByBucket[it]?.isNotEmpty() == true)
+
+    // Create a list of pages, where each page contains a bucket and a subset of apps
+    val pages = remember(appsByBucket) {
+        val pages = mutableListOf<Pair<RecencyBucket, List<AppInfo>>>()
+
+
+        // Sort buckets by their order in the enum
+        val sortedBuckets = RecencyBucket.entries.filter {
+            appsByBucket.containsKey(it) && (appsByBucket[it]?.isNotEmpty() == true)
+        }
+
+        // The number of apps per page (4 columns x 7 rows)
+        val appsPerPage = 28
+
+        // Create pages for each bucket
+        sortedBuckets.forEach { bucket ->
+            val apps = appsByBucket[bucket] ?: emptyList()
+
+            // Split apps into chunks of appsPerPage
+            val chunkedApps = apps.chunked(appsPerPage)
+
+            // Add each chunk as a separate page with the same bucket
+            chunkedApps.forEach { chunk ->
+                pages.add(Pair(bucket, chunk))
+            }
+        }
+
+        pages
     }
 
-    // Create pager state
-    val pagerState = rememberPagerState(pageCount = { sortedBuckets.size })
+
+    // Create pager state with the total number of pages
+    val pagerState = rememberPagerState(pageCount = { pages.size })
 
     Column(modifier = Modifier.fillMaxSize()) {
-        // Horizontal pager for swiping between buckets
+        // Horizontal pager for swiping between pages
         HorizontalPager(
             state = pagerState,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(bottom = 16.dp)
-        ) { page ->
-            val bucket = sortedBuckets[page]
-            val apps = appsByBucket[bucket] ?: emptyList()
+        ) { pageIndex ->
+            val (bucket, pageApps) = pages[pageIndex]
 
             Column(modifier = Modifier.fillMaxSize()) {
                 // Bucket header
                 BucketHeader(bucket = bucket)
 
-                // Apps in this bucket
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(4),
-                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f)
-                ) {
-                    items(apps) { app ->
-                        AppIcon(
-                            app = app,
-                            onClick = { onAppClick(app) },
-                            onLongClick = { onAppLongClick(app) }
-                        )
+
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    repeat(7) { row ->
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            repeat(4) { col ->
+
+                                val app = pageApps.getOrNull(row * 4 + col)
+                                if (app != null) {
+                                    AppIcon(
+                                        modifier = Modifier.weight(1f),
+                                        app = app,
+                                        onClick = { onAppClick(app) },
+                                        onLongClick = { onAppLongClick(app) }
+                                    )
+                                } else {
+                                    Spacer(Modifier.weight(1f))
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -223,38 +255,35 @@ fun BucketHeader(bucket: RecencyBucket) {
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun AppIcon(
+    modifier: Modifier,
     app: AppInfo,
     onClick: () -> Unit,
     onLongClick: () -> Unit
 ) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier
+        modifier = modifier
             .width(72.dp)
+            .height(86.dp)
             .combinedClickable(
                 onClick = { onClick() },
                 onLongClick = { onLongClick() }
             )
     ) {
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            val bitmap = remember(app) { app.icon.asImageBitmap() }
-            androidx.compose.foundation.Image(
-                bitmap = bitmap,
-                contentDescription = app.label,
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(CircleShape)
-            )
-        }
+
+        val bitmap = remember(app) { app.icon.asImageBitmap() }
+        androidx.compose.foundation.Image(
+            bitmap = bitmap,
+            contentDescription = app.label,
+            modifier = Modifier
+                .size(56.dp)
+        )
 
         Spacer(modifier = Modifier.height(4.dp))
 
         Text(
             text = app.label,
-            style = MaterialTheme.typography.bodySmall,
+            style = MaterialTheme.typography.bodySmall.copy(color = Color.White),
             textAlign = TextAlign.Center,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
