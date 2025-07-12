@@ -13,7 +13,7 @@ android {
     defaultConfig {
         applicationId = "me.semoro.revy"
         minSdk = 34
-        targetSdk = 36
+        targetSdk = 34
         versionCode = 1
         versionName = "1.0"
 
@@ -71,6 +71,8 @@ dependencies {
 
     // Glance (AppWidget)
     implementation(libs.androidx.glance.appwidget)
+
+    implementation(libs.accompanist.permissions)
 
     // Testing
     testImplementation(libs.junit)

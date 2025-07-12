@@ -29,10 +29,9 @@ fun NavGraph(
     
     // Check if we have usage stats permission
     val permissionViewModel: PermissionViewModel = hiltViewModel()
-    val hasUsageStatsPermission = permissionViewModel.hasUsageStatsPermission()
-    
+
     // If we don't have permission, start at the permission screen
-    val actualStartDestination = if (hasUsageStatsPermission) {
+    val actualStartDestination = if (permissionViewModel.hasAllRequiredPermissions()) {
         startDestination
     } else {
         Screen.PERMISSION.route

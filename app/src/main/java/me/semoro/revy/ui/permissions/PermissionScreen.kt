@@ -1,8 +1,5 @@
 package me.semoro.revy.ui.permissions
 
-import android.content.Intent
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -10,82 +7,136 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import me.semoro.revy.data.repository.AppUsageRepository
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.isGranted
+import com.google.accompanist.permissions.rememberPermissionState
 import me.semoro.revy.util.PermissionUtils
 
 /**
- * Screen for requesting usage stats permission.
+ * Screen for requesting all required permissions.
  *
- * @param onPermissionGranted Callback when permission is granted
+ * @param onPermissionGranted Callback when all permissions are granted
  * @param permissionUtils Utility for checking and requesting permissions
  * @param viewModel ViewModel for the permission screen
  */
+@OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun PermissionScreen(
     onPermissionGranted: () -> Unit,
     permissionUtils: PermissionUtils,
     viewModel: PermissionViewModel = hiltViewModel()
 ) {
-    var hasPermission by remember { mutableStateOf(viewModel.hasUsageStatsPermission()) }
-    
-    // Check permission on launch and when returning from settings
-    LaunchedEffect(key1 = hasPermission) {
-        if (hasPermission) {
-            onPermissionGranted()
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background
+    ) {
+
+        val usageStatsPermission = rememberPermissionState(
+            android.Manifest.permission.PACKAGE_USAGE_STATS
+        )
+
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = "Required Permissions",
+                style = MaterialTheme.typography.headlineMedium,
+                textAlign = TextAlign.Center
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Text(
+                text = "Revy Launcher needs the following permissions to function properly:",
+                style = MaterialTheme.typography.bodyLarge,
+                textAlign = TextAlign.Center
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Usage Stats Permission Card
+            PermissionCard(
+                title = "Usage Access",
+                description = "Needed to show your recently used apps",
+                isGranted = usageStatsPermission.status.isGranted,
+                onRequestPermission = {
+                    usageStatsPermission.launchPermissionRequest()
+                }
+            )
         }
     }
-    
-    // Activity result launcher for the usage access settings
-    val settingsLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.StartActivityForResult()
-    ) {
-        // Check permission again after returning from settings
-        hasPermission = viewModel.hasUsageStatsPermission()
-    }
-    
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Text(
-            text = "Usage Access Permission Required",
-            style = MaterialTheme.typography.headlineMedium,
-            textAlign = TextAlign.Center
+}
+
+/**
+ * Card component for displaying permission status and request button.
+ *
+ * @param title Title of the permission
+ * @param description Description of why the permission is needed
+ * @param isGranted Whether the permission is granted
+ * @param onRequestPermission Callback when the user clicks to request the permission
+ */
+@Composable
+private fun PermissionCard(
+    title: String,
+    description: String,
+    isGranted: Boolean,
+    onRequestPermission: () -> Unit
+) {
+    Card(
+        modifier = Modifier.padding(8.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isGranted) 
+                MaterialTheme.colorScheme.secondaryContainer 
+            else 
+                MaterialTheme.colorScheme.surfaceVariant
         )
-        
-        Spacer(modifier = Modifier.height(16.dp))
-        
-        Text(
-            text = "Revy Launcher needs access to your app usage statistics to show your recently used apps.",
-            style = MaterialTheme.typography.bodyLarge,
-            textAlign = TextAlign.Center
-        )
-        
-        Spacer(modifier = Modifier.height(32.dp))
-        
-        Button(
-            onClick = {
-                val intent = permissionUtils.createUsageAccessSettingsIntent()
-                settingsLauncher.launch(intent)
-            }
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(text = "Grant Permission")
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleLarge,
+                textAlign = TextAlign.Center
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = description,
+                style = MaterialTheme.typography.bodyMedium,
+                textAlign = TextAlign.Center
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            if (isGranted) {
+                Text(
+                    text = "✓ Granted",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            } else {
+                Button(onClick = onRequestPermission) {
+                    Text(text = "Grant Permission")
+                }
+            }
         }
     }
 }
