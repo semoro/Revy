@@ -1,13 +1,12 @@
 package me.semoro.revy
 
+import android.graphics.Color
 import android.os.Bundle
+import android.view.WindowManager
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.ui.Modifier
 import dagger.hilt.android.AndroidEntryPoint
 import me.semoro.revy.ui.navigation.NavGraph
 import me.semoro.revy.ui.theme.RevyTheme
@@ -22,16 +21,21 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+        window.setFlags(
+            WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER,
+            WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER);
+
+
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT),
+            navigationBarStyle = SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT),
+        )
+        window.isNavigationBarContrastEnforced = false
         setContent {
             RevyTheme {
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
-                ) {
-                    NavGraph(permissionUtils = permissionUtils)
-                }
+                NavGraph(permissionUtils = permissionUtils)
             }
         }
+
     }
 }
