@@ -188,14 +188,20 @@ fun AppGridByBucket(
         // Horizontal pager for swiping between pages
 
         val (bucket, _) = pages[pagerState.targetPage]
-        BucketHeader(bucket = bucket)
+
+        // Calculate the current page index and total pages for this bucket
+        BucketHeader(
+            bucket = bucket,
+            currentPage = pagerState.targetPage,
+            pageCount = pages.size
+        )
         HorizontalPager(
             state = pagerState,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(bottom = 16.dp)
         ) { pageIndex ->
-            val (bucket, pageApps) = pages[pageIndex]
+            val (_, pageApps) = pages[pageIndex]
             // Bucket header
             Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxSize()) {
                 repeat(7) { row ->
@@ -225,20 +231,53 @@ fun AppGridByBucket(
  * Header for a recency bucket.
  *
  * @param bucket The recency bucket
+ * @param currentPage The current page index
+ * @param pageCount The total number of pages
  */
 @Composable
-fun BucketHeader(bucket: RecencyBucket) {
+fun BucketHeader(
+    bucket: RecencyBucket,
+    currentPage: Int = 0,
+    pageCount: Int = 1
+) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.95f))
             .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
-        Text(
-            text = bucket.title,
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurface
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = bucket.title,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+
+            if (pageCount > 1) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    repeat(pageCount) { index ->
+                        Box(
+                            modifier = Modifier
+                                .size(8.dp)
+                                .clip(CircleShape)
+                                .background(
+                                    if (index == currentPage) 
+                                        MaterialTheme.colorScheme.primary 
+                                    else 
+                                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                                )
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 
