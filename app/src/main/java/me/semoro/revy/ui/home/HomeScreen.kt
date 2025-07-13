@@ -186,6 +186,9 @@ fun AppGridByBucket(
 
     Column(modifier = Modifier.fillMaxSize()) {
         // Horizontal pager for swiping between pages
+
+        val (bucket, _) = pages[pagerState.targetPage]
+        BucketHeader(bucket = bucket)
         HorizontalPager(
             state = pagerState,
             modifier = Modifier
@@ -193,28 +196,22 @@ fun AppGridByBucket(
                 .padding(bottom = 16.dp)
         ) { pageIndex ->
             val (bucket, pageApps) = pages[pageIndex]
+            // Bucket header
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxSize()) {
+                repeat(7) { row ->
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        repeat(4) { col ->
 
-            Column(modifier = Modifier.fillMaxSize()) {
-                // Bucket header
-                BucketHeader(bucket = bucket)
-
-
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    repeat(7) { row ->
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            repeat(4) { col ->
-
-                                val app = pageApps.getOrNull(row * 4 + col)
-                                if (app != null) {
-                                    AppIcon(
-                                        modifier = Modifier.weight(1f),
-                                        app = app,
-                                        onClick = { onAppClick(app) },
-                                        onLongClick = { onAppLongClick(app) }
-                                    )
-                                } else {
-                                    Spacer(Modifier.weight(1f))
-                                }
+                            val app = pageApps.getOrNull(row * 4 + col)
+                            if (app != null) {
+                                AppIcon(
+                                    modifier = Modifier.weight(1f),
+                                    app = app,
+                                    onClick = { onAppClick(app) },
+                                    onLongClick = { onAppLongClick(app) }
+                                )
+                            } else {
+                                Spacer(Modifier.weight(1f))
                             }
                         }
                     }

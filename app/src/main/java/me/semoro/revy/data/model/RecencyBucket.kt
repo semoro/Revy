@@ -11,8 +11,8 @@ import java.util.concurrent.TimeUnit
  */
 enum class RecencyBucket(val title: String, val startTime: Long, val endTime: Long) {
     TODAY("Today", -TimeUnit.HOURS.toMillis(24), 0),
-    YESTERDAY("Yesterday", -TimeUnit.HOURS.toMillis(48), -TimeUnit.HOURS.toMillis(24)),
-    THIS_WEEK("This week", -TimeUnit.DAYS.toMillis(7), -TimeUnit.HOURS.toMillis(48)),
+    THIS_WEEK("This week", -TimeUnit.DAYS.toMillis(7), -TimeUnit.HOURS.toMillis(24)),
+    LAST_30_DAYS("30 days", -TimeUnit.DAYS.toMillis(30), -TimeUnit.HOURS.toDays(7)),
     OLDER("Older", Long.MIN_VALUE, -TimeUnit.DAYS.toMillis(7));
 
     companion object {
