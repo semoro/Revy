@@ -214,8 +214,25 @@ fun AppGridByBucket(
                 }
 
                 // Display apps in a grid
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxSize()) {
-                    repeat(7) { row ->
+                val rowCount = if (page is Page.SearchPage) 3 else 7
+
+                // Get IME padding
+                val imeVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
+                val imePadding = if (page is Page.SearchPage && imeVisible) {
+                    with(LocalDensity.current) {
+                        WindowInsets.ime.getBottom(this).toDp()
+                    }
+                } else {
+                    0.dp
+                }
+
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(8.dp), 
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(bottom = imePadding)
+                ) {
+                    repeat(rowCount) { row ->
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             repeat(4) { col ->
                                 val app = pageApps.getOrNull(row * 4 + col)
@@ -241,8 +258,6 @@ fun AppGridByBucket(
 /**
  * Header for a page.
  *
- * @param bucket The recency bucket (for bucket pages)
- * @param isSearchPage Whether this is a search page
  * @param currentPage The current page index
  * @param pageCount The total number of pages
  * @param searchQuery The current search query
@@ -263,7 +278,7 @@ fun BucketHeader(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.95f))
+            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.1f))
             .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
         Row(

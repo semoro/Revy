@@ -91,8 +91,11 @@ class HomeViewModel @Inject constructor(
     ): List<Page> {
         val pages = mutableListOf<Page>()
 
-        // The number of apps per page (4 columns x 7 rows)
-        val appsPerPage = 28
+        // The number of apps per page
+        // Regular pages: 4 columns x 7 rows
+        val regularAppsPerPage = 28
+        // Search pages: 4 columns x 3 rows
+        val searchAppsPerPage = 12
 
         // First, add all regular recency bucket pages
         val regularBuckets = listOf(
@@ -104,8 +107,8 @@ class HomeViewModel @Inject constructor(
         regularBuckets.forEach { bucket ->
             val apps = appsByBucket[bucket] ?: emptyList()
             if (apps.isNotEmpty()) {
-                // Split apps into chunks of appsPerPage
-                val chunkedApps = apps.chunked(appsPerPage)
+                // Split apps into chunks of regularAppsPerPage
+                val chunkedApps = apps.chunked(regularAppsPerPage)
 
                 // Add each chunk as a separate page with the same bucket
                 chunkedApps.forEach { chunk ->
@@ -117,7 +120,7 @@ class HomeViewModel @Inject constructor(
         // Add search page
         if (searchState.isActive && searchState.results.isNotEmpty()) {
             // If search is active and we have results, add them to pages
-            val searchResults = searchState.results.chunked(appsPerPage)
+            val searchResults = searchState.results.chunked(searchAppsPerPage)
             searchResults.forEach { chunk ->
                 pages.add(Page.SearchPage(searchState.query, chunk))
             }
