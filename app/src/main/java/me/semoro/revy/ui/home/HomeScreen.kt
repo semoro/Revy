@@ -90,7 +90,10 @@ fun HomeScreen(
                 AppGridByBucket(
                     appsByBucket = uiState.appsByBucket,
                     onAppClick = { appLauncherUtils.launchApp(it.packageName) },
-                    onAppLongClick = { viewModel.togglePinApp(it.packageName, !it.isPinned) }
+                    onAppLongClick = { viewModel.togglePinApp(it.packageName, !it.isPinned) },
+                    uiState = uiState,
+                    onSearchQueryChange = { viewModel.updateSearchQuery(it) },
+                    onSearchActiveChange = { viewModel.setSearchActive(it) }
                 )
             }
         }
@@ -143,42 +146,57 @@ fun PinnedAppsStrip(
  * @param appsByBucket Map of recency bucket to list of apps
  * @param onAppClick Callback when an app is clicked
  * @param onAppLongClick Callback when an app is long-clicked
+ * @param uiState Current UI state
+ * @param onSearchQueryChange Callback when search query changes
+ * @param onSearchActiveChange Callback when search active state changes
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun AppGridByBucket(
     appsByBucket: Map<RecencyBucket, List<AppInfo>>,
     onAppClick: (AppInfo) -> Unit,
-    onAppLongClick: (AppInfo) -> Unit
+    onAppLongClick: (AppInfo) -> Unit,
+    uiState: HomeUiState = HomeUiState(),
+    onSearchQueryChange: (String) -> Unit = {},
+    onSearchActiveChange: (Boolean) -> Unit = {}
 ) {
-
-    val speedSearchState = remember { mutableStateOf("") }
-
     // Create a list of pages, where each page contains a bucket and a subset of apps
-    val pages = remember(appsByBucket, speedSearchState.value) {
+    val pages = remember(appsByBucket, uiState.searchQuery, uiState.isSearchActive, uiState.searchResults) {
         val pages = mutableListOf<Pair<RecencyBucket, List<AppInfo>>>()
-
-        val cleanedBuckets = appsByBucket.mapValues { it.value.filter { app -> app.label.contains(speedSearchState.value, ignoreCase = true) } }
-
-        // Sort buckets by their order in the enum
-        val sortedBuckets = RecencyBucket.entries.filter {
-            cleanedBuckets.containsKey(it) && (cleanedBuckets[it]?.isNotEmpty() == true)
-        }
 
         // The number of apps per page (4 columns x 7 rows)
         val appsPerPage = 28
 
-        // Create pages for each bucket
-        sortedBuckets.forEach { bucket ->
-            val apps = cleanedBuckets[bucket] ?: emptyList()
+        // First, add all regular recency bucket pages
+        val regularBuckets = listOf(
+            RecencyBucket.TODAY,
+            RecencyBucket.THIS_WEEK,
+            RecencyBucket.LAST_30_DAYS
+        )
 
-            // Split apps into chunks of appsPerPage
-            val chunkedApps = apps.chunked(appsPerPage)
+        regularBuckets.forEach { bucket ->
+            val apps = appsByBucket[bucket] ?: emptyList()
+            if (apps.isNotEmpty()) {
+                // Split apps into chunks of appsPerPage
+                val chunkedApps = apps.chunked(appsPerPage)
 
-            // Add each chunk as a separate page with the same bucket
-            chunkedApps.forEach { chunk ->
-                pages.add(Pair(bucket, chunk))
+                // Add each chunk as a separate page with the same bucket
+                chunkedApps.forEach { chunk ->
+                    pages.add(Pair(bucket, chunk))
+                }
             }
+        }
+
+        // Add search page after regular pages
+        if (uiState.isSearchActive && uiState.searchResults.isNotEmpty()) {
+            // If search is active and we have results, add them to pages
+            val searchResults = uiState.searchResults.chunked(appsPerPage)
+            searchResults.forEach { chunk ->
+                pages.add(Pair(RecencyBucket.SEARCH, chunk))
+            }
+        } else {
+            // Add an empty search page
+            pages.add(Pair(RecencyBucket.SEARCH, emptyList()))
         }
 
         pages
@@ -194,10 +212,12 @@ fun AppGridByBucket(
 
         // Calculate the current page index and total pages for this bucket
         BucketHeader(
-            speedSearchState,
             bucket = bucket,
             currentPage = pagerState.targetPage,
-            pageCount = pages.size
+            pageCount = pages.size,
+            searchQuery = uiState.searchQuery,
+            onSearchQueryChange = onSearchQueryChange,
+            onSearchActiveChange = onSearchActiveChange
         )
         HorizontalPager(
             state = pagerState,
@@ -238,13 +258,18 @@ fun AppGridByBucket(
  * @param bucket The recency bucket
  * @param currentPage The current page index
  * @param pageCount The total number of pages
+ * @param searchQuery The current search query
+ * @param onSearchQueryChange Callback when search query changes
+ * @param onSearchActiveChange Callback when search active state changes
  */
 @Composable
 fun BucketHeader(
-    speedSearchState: MutableState<String>,
     bucket: RecencyBucket,
     currentPage: Int = 0,
-    pageCount: Int = 1
+    pageCount: Int = 1,
+    searchQuery: String = "",
+    onSearchQueryChange: (String) -> Unit = {},
+    onSearchActiveChange: (Boolean) -> Unit = {}
 ) {
     Box(
         modifier = Modifier
@@ -257,16 +282,31 @@ fun BucketHeader(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            if (bucket == RecencyBucket.OLDER) {
-                var text by speedSearchState
-
+            if (bucket == RecencyBucket.SEARCH) {
                 val focusRequester = remember { FocusRequester() }
-                OutlinedTextField(text, onValueChange = { text = it }, modifier = Modifier.focusRequester(focusRequester))
 
-                LaunchedEffect(Unit) {
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { onSearchQueryChange(it) },
+                    modifier = Modifier
+                        .focusRequester(focusRequester)
+                        .fillMaxWidth(0.8f),
+                    placeholder = { Text("Search apps...") },
+                    singleLine = true
+                )
+
+                LaunchedEffect(bucket) {
                     focusRequester.requestFocus()
+                    onSearchActiveChange(true)
                 }
             } else {
+                // If we're navigating away from search, reset search
+                LaunchedEffect(bucket) {
+                    if (searchQuery.isNotEmpty()) {
+                        onSearchActiveChange(false)
+                    }
+                }
+
                 Text(
                     text = bucket.title,
                     style = MaterialTheme.typography.titleMedium,

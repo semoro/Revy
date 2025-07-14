@@ -22,14 +22,14 @@ class HomeViewModel @Inject constructor(
     private val appUsageRepository: AppUsageRepository,
     private val pinnedAppsRepository: PinnedAppsRepository
 ) : ViewModel() {
-    
+
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
-    
+
     init {
         loadApps()
     }
-    
+
     /**
      * Loads the apps and updates the UI state.
      */
@@ -39,7 +39,7 @@ class HomeViewModel @Inject constructor(
             appUsageRepository.getAppsByRecencyBucket().collectLatest { appsByBucket ->
                 // Get pinned apps
                 val pinnedApps = appsByBucket.values.flatten().filter { it.isPinned }
-                
+
                 // Update UI state
                 _uiState.value = HomeUiState(
                     isLoading = false,
@@ -49,7 +49,7 @@ class HomeViewModel @Inject constructor(
             }
         }
     }
-    
+
     /**
      * Pins or unpins an app.
      *
@@ -65,13 +65,58 @@ class HomeViewModel @Inject constructor(
             }
         }
     }
-    
+
     /**
      * Refreshes the app list.
      */
     fun refreshApps() {
         _uiState.value = _uiState.value.copy(isLoading = true)
         loadApps()
+    }
+
+    /**
+     * Updates the search query and filters apps accordingly.
+     *
+     * @param query The search query
+     */
+    fun updateSearchQuery(query: String) {
+        val currentState = _uiState.value
+        val allApps = currentState.appsByBucket.values.flatten()
+
+        val filteredApps = if (query.isBlank()) {
+            emptyList()
+        } else {
+            allApps.filter { 
+                it.label.contains(query, ignoreCase = true) 
+            }
+        }
+
+        _uiState.value = currentState.copy(
+            searchQuery = query,
+            searchResults = filteredApps
+        )
+    }
+
+    /**
+     * Activates or deactivates search mode.
+     *
+     * @param active Whether search mode should be active
+     */
+    fun setSearchActive(active: Boolean) {
+        val currentState = _uiState.value
+
+        // If deactivating search, clear the search query and results
+        if (!active) {
+            _uiState.value = currentState.copy(
+                isSearchActive = false,
+                searchQuery = "",
+                searchResults = emptyList()
+            )
+        } else {
+            _uiState.value = currentState.copy(
+                isSearchActive = true
+            )
+        }
     }
 }
 
@@ -81,5 +126,8 @@ class HomeViewModel @Inject constructor(
 data class HomeUiState(
     val isLoading: Boolean = true,
     val pinnedApps: List<AppInfo> = emptyList(),
-    val appsByBucket: Map<RecencyBucket, List<AppInfo>> = emptyMap()
+    val appsByBucket: Map<RecencyBucket, List<AppInfo>> = emptyMap(),
+    val searchQuery: String = "",
+    val isSearchActive: Boolean = false,
+    val searchResults: List<AppInfo> = emptyList()
 )
