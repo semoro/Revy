@@ -202,7 +202,7 @@ fun AppGridByBucket(
             state = pagerState,
             modifier = Modifier
                 .fillMaxSize()
-                .padding(bottom = 16.dp)
+                .padding(top = 8.dp, bottom = 8.dp)
         ) { pageIndex ->
             val page = pages.getOrNull(pageIndex)
 
