@@ -1,6 +1,5 @@
 package me.semoro.revy.ui.home
 
-import android.graphics.Bitmap
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
@@ -10,7 +9,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -19,30 +17,33 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.core.graphics.drawable.toBitmap
 import androidx.hilt.navigation.compose.hiltViewModel
 import me.semoro.revy.data.model.AppInfo
 import me.semoro.revy.data.model.RecencyBucket
@@ -151,14 +152,17 @@ fun AppGridByBucket(
     onAppLongClick: (AppInfo) -> Unit
 ) {
 
+    val speedSearchState = remember { mutableStateOf("") }
+
     // Create a list of pages, where each page contains a bucket and a subset of apps
-    val pages = remember(appsByBucket) {
+    val pages = remember(appsByBucket, speedSearchState.value) {
         val pages = mutableListOf<Pair<RecencyBucket, List<AppInfo>>>()
 
+        val cleanedBuckets = appsByBucket.mapValues { it.value.filter { app -> app.label.contains(speedSearchState.value, ignoreCase = true) } }
 
         // Sort buckets by their order in the enum
         val sortedBuckets = RecencyBucket.entries.filter {
-            appsByBucket.containsKey(it) && (appsByBucket[it]?.isNotEmpty() == true)
+            cleanedBuckets.containsKey(it) && (cleanedBuckets[it]?.isNotEmpty() == true)
         }
 
         // The number of apps per page (4 columns x 7 rows)
@@ -166,7 +170,7 @@ fun AppGridByBucket(
 
         // Create pages for each bucket
         sortedBuckets.forEach { bucket ->
-            val apps = appsByBucket[bucket] ?: emptyList()
+            val apps = cleanedBuckets[bucket] ?: emptyList()
 
             // Split apps into chunks of appsPerPage
             val chunkedApps = apps.chunked(appsPerPage)
@@ -181,16 +185,16 @@ fun AppGridByBucket(
     }
 
 
-    // Create pager state with the total number of pages
-    val pagerState = rememberPagerState(pageCount = { pages.size })
-
     Column(modifier = Modifier.fillMaxSize()) {
         // Horizontal pager for swiping between pages
 
+        // Create pager state with the total number of pages
+        val pagerState = rememberPagerState(pageCount = { pages.size })
         val (bucket, _) = pages[pagerState.targetPage]
 
         // Calculate the current page index and total pages for this bucket
         BucketHeader(
+            speedSearchState,
             bucket = bucket,
             currentPage = pagerState.targetPage,
             pageCount = pages.size
@@ -202,6 +206,7 @@ fun AppGridByBucket(
                 .padding(bottom = 16.dp)
         ) { pageIndex ->
             val (_, pageApps) = pages[pageIndex]
+
             // Bucket header
             Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxSize()) {
                 repeat(7) { row ->
@@ -236,6 +241,7 @@ fun AppGridByBucket(
  */
 @Composable
 fun BucketHeader(
+    speedSearchState: MutableState<String>,
     bucket: RecencyBucket,
     currentPage: Int = 0,
     pageCount: Int = 1
@@ -251,11 +257,22 @@ fun BucketHeader(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = bucket.title,
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface
-            )
+            if (bucket == RecencyBucket.OLDER) {
+                var text by speedSearchState
+
+                val focusRequester = remember { FocusRequester() }
+                OutlinedTextField(text, onValueChange = { text = it }, modifier = Modifier.focusRequester(focusRequester))
+
+                LaunchedEffect(Unit) {
+                    focusRequester.requestFocus()
+                }
+            } else {
+                Text(
+                    text = bucket.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
 
             if (pageCount > 1) {
                 Row(
