@@ -13,9 +13,7 @@ enum class RecencyBucket(val title: String, val startTime: Long, val endTime: Lo
     TODAY("Today", -TimeUnit.HOURS.toMillis(24), 0),
     THIS_WEEK("This week", -TimeUnit.DAYS.toMillis(7), -TimeUnit.HOURS.toMillis(24)),
     LAST_30_DAYS("30 days", -TimeUnit.DAYS.toMillis(30), -TimeUnit.HOURS.toDays(7)),
-    OLDER("Older", Long.MIN_VALUE, -TimeUnit.DAYS.toMillis(30)),
-    SEARCH("Search", 0, 0); // Special bucket for search page
-
+    OLDER("Older", Long.MIN_VALUE, -TimeUnit.DAYS.toMillis(30));
     companion object {
         /**
          * Determines the appropriate bucket for a timestamp.

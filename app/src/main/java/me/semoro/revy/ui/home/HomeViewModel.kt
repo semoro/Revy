@@ -7,12 +7,34 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import me.semoro.revy.data.model.AppInfo
 import me.semoro.revy.data.model.RecencyBucket
 import me.semoro.revy.data.repository.AppUsageRepository
 import me.semoro.revy.data.repository.PinnedAppsRepository
 import javax.inject.Inject
+
+/**
+ * Sealed class representing a page in the home screen.
+ */
+sealed class Page {
+    /**
+     * A page showing apps from a recency bucket.
+     *
+     * @property bucket The recency bucket
+     * @property apps The list of apps in this page
+     */
+    data class BucketPage(val bucket: RecencyBucket, val apps: List<AppInfo>) : Page()
+
+    /**
+     * A page showing search results.
+     *
+     * @property query The search query
+     * @property apps The list of apps matching the search query
+     */
+    data class SearchPage(val query: String, val apps: List<AppInfo>) : Page()
+}
 
 /**
  * ViewModel for the home screen.
@@ -39,8 +61,72 @@ class HomeViewModel @Inject constructor(
     private val _searchState = MutableStateFlow(SearchState())
     val searchState: StateFlow<SearchState> = _searchState.asStateFlow()
 
+    // Pages
+    private val _pages = MutableStateFlow<List<Page>>(emptyList())
+    val pages: StateFlow<List<Page>> = _pages.asStateFlow()
+
     init {
         loadApps()
+
+        // Update pages whenever appsByBucket or searchState changes
+        viewModelScope.launch {
+            combine(_appsByBucket, _searchState) { appsByBucket, searchState ->
+                createPages(appsByBucket, searchState)
+            }.collect { pages ->
+                _pages.value = pages
+            }
+        }
+    }
+
+    /**
+     * Creates pages based on apps by bucket and search state.
+     *
+     * @param appsByBucket Apps grouped by recency bucket
+     * @param searchState Current search state
+     * @return List of pages
+     */
+    private fun createPages(
+        appsByBucket: Map<RecencyBucket, List<AppInfo>>,
+        searchState: SearchState
+    ): List<Page> {
+        val pages = mutableListOf<Page>()
+
+        // The number of apps per page (4 columns x 7 rows)
+        val appsPerPage = 28
+
+        // First, add all regular recency bucket pages
+        val regularBuckets = listOf(
+            RecencyBucket.TODAY,
+            RecencyBucket.THIS_WEEK,
+            RecencyBucket.LAST_30_DAYS
+        )
+
+        regularBuckets.forEach { bucket ->
+            val apps = appsByBucket[bucket] ?: emptyList()
+            if (apps.isNotEmpty()) {
+                // Split apps into chunks of appsPerPage
+                val chunkedApps = apps.chunked(appsPerPage)
+
+                // Add each chunk as a separate page with the same bucket
+                chunkedApps.forEach { chunk ->
+                    pages.add(Page.BucketPage(bucket, chunk))
+                }
+            }
+        }
+
+        // Add search page
+        if (searchState.isActive && searchState.results.isNotEmpty()) {
+            // If search is active and we have results, add them to pages
+            val searchResults = searchState.results.chunked(appsPerPage)
+            searchResults.forEach { chunk ->
+                pages.add(Page.SearchPage(searchState.query, chunk))
+            }
+        } else {
+            // Add an empty search page
+            pages.add(Page.SearchPage(searchState.query, emptyList()))
+        }
+
+        return pages
     }
 
     /**
