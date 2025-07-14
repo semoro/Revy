@@ -40,6 +40,9 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.Icon
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -172,6 +175,7 @@ fun AppGridByBucket(
                 currentPage = pagerState.targetPage,
                 pageCount = pages.size,
                 searchQuery = searchState.query,
+                pages = pages,
                 onSearchQueryChange = { viewModel.updateSearchQuery(it) },
                 onSearchActiveChange = { viewModel.setSearchActive(it) },
             )
@@ -233,6 +237,7 @@ fun BucketHeader(
     page: Page,
     currentPage: Int = 0,
     pageCount: Int = 1,
+    pages: List<Page>,
     searchQuery: String = "",
     onSearchQueryChange: (String) -> Unit = {},
     onSearchActiveChange: (Boolean) -> Unit = {},
@@ -289,18 +294,29 @@ fun BucketHeader(
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    repeat(pageCount) { index ->
-                        Box(
-                            modifier = Modifier
-                                .size(8.dp)
-                                .clip(CircleShape)
-                                .background(
-                                    if (index == currentPage)
-                                        MaterialTheme.colorScheme.primary
-                                    else
-                                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
-                                )
-                        )
+                    for (p in pages) {
+                        val color = if (p == page)
+                            MaterialTheme.colorScheme.primary
+                        else
+                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                        // Check if the current page is a search page
+                        if (p is Page.SearchPage) {
+                            // Use magnifying glass icon for search pages
+                            Icon(
+                                imageVector = Icons.Default.Search,
+                                contentDescription = "Search",
+                                modifier = Modifier.size(12.dp),
+                                tint = color
+                            )
+                        } else {
+                            // Use dot for regular pages
+                            Box(
+                                modifier = Modifier
+                                    .size(8.dp)
+                                    .clip(CircleShape)
+                                    .background(color)
+                            )
+                        }
                     }
                 }
             }
