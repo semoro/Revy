@@ -9,9 +9,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
@@ -21,6 +23,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -43,11 +47,17 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.input.ImeAction
 import androidx.hilt.navigation.compose.hiltViewModel
+import kotlinx.coroutines.launch
 import me.semoro.revy.data.model.AppInfo
 import me.semoro.revy.data.model.RecencyBucket
 import me.semoro.revy.util.AppLauncherUtils
@@ -170,6 +180,7 @@ fun AppGridByBucket(
 
         // Show header based on page type
         if (currentPage != null) {
+            val coroutineScope = rememberCoroutineScope()
             BucketHeader(
                 page = currentPage,
                 currentPage = pagerState.targetPage,
@@ -178,6 +189,12 @@ fun AppGridByBucket(
                 pages = pages,
                 onSearchQueryChange = { viewModel.updateSearchQuery(it) },
                 onSearchActiveChange = { viewModel.setSearchActive(it) },
+                onResetSearch = {
+                    viewModel.setSearchActive(false)
+                    coroutineScope.launch {
+                        pagerState.animateScrollToPage(pages.indexOfLast { it !is Page.SearchPage })
+                    }
+                }
             )
         }
 
@@ -241,6 +258,7 @@ fun BucketHeader(
     searchQuery: String = "",
     onSearchQueryChange: (String) -> Unit = {},
     onSearchActiveChange: (Boolean) -> Unit = {},
+    onResetSearch: () -> Unit = {}
 ) {
     Box(
         modifier = Modifier
@@ -257,6 +275,7 @@ fun BucketHeader(
                 is Page.SearchPage -> {
                     val focusRequester = remember { FocusRequester() }
 
+
                     OutlinedTextField(
                         value = searchQuery,
                         onValueChange = { onSearchQueryChange(it) },
@@ -264,8 +283,24 @@ fun BucketHeader(
                             .focusRequester(focusRequester)
                             .fillMaxWidth(0.8f),
                         placeholder = { Text("Search apps...") },
-                        singleLine = true
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Previous),
+                        keyboardActions = KeyboardActions(onAny = {
+                            onResetSearch()
+                        })
                     )
+
+                    val isVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
+                    var wasVisible by remember { mutableStateOf(false) }
+                    LaunchedEffect(key1 = isVisible, key2 = wasVisible) {
+                        if (!isVisible) {
+                            if (wasVisible) {
+                                onResetSearch()
+                            }
+                        } else {
+                            wasVisible = true
+                        }
+                    }
 
                     LaunchedEffect(Unit) {
                         focusRequester.requestFocus()
