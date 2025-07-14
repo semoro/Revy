@@ -23,8 +23,21 @@ class HomeViewModel @Inject constructor(
     private val pinnedAppsRepository: PinnedAppsRepository
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(HomeUiState())
-    val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
+    // Loading state
+    private val _isLoading = MutableStateFlow(true)
+    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+
+    // Apps by recency bucket
+    private val _appsByBucket = MutableStateFlow<Map<RecencyBucket, List<AppInfo>>>(emptyMap())
+    val appsByBucket: StateFlow<Map<RecencyBucket, List<AppInfo>>> = _appsByBucket.asStateFlow()
+
+    // Pinned apps
+    private val _pinnedApps = MutableStateFlow<List<AppInfo>>(emptyList())
+    val pinnedApps: StateFlow<List<AppInfo>> = _pinnedApps.asStateFlow()
+
+    // Search state
+    private val _searchState = MutableStateFlow(SearchState())
+    val searchState: StateFlow<SearchState> = _searchState.asStateFlow()
 
     init {
         loadApps()
@@ -35,17 +48,16 @@ class HomeViewModel @Inject constructor(
      */
     private fun loadApps() {
         viewModelScope.launch {
+            _isLoading.value = true
             // Get apps by recency bucket with pinned status
             appUsageRepository.getAppsByRecencyBucket().collectLatest { appsByBucket ->
                 // Get pinned apps
                 val pinnedApps = appsByBucket.values.flatten().filter { it.isPinned }
 
                 // Update UI state
-                _uiState.value = HomeUiState(
-                    isLoading = false,
-                    pinnedApps = pinnedApps,
-                    appsByBucket = appsByBucket
-                )
+                _appsByBucket.value = appsByBucket
+                _pinnedApps.value = pinnedApps
+                _isLoading.value = false
             }
         }
     }
@@ -70,7 +82,7 @@ class HomeViewModel @Inject constructor(
      * Refreshes the app list.
      */
     fun refreshApps() {
-        _uiState.value = _uiState.value.copy(isLoading = true)
+        _isLoading.value = true
         loadApps()
     }
 
@@ -80,8 +92,7 @@ class HomeViewModel @Inject constructor(
      * @param query The search query
      */
     fun updateSearchQuery(query: String) {
-        val currentState = _uiState.value
-        val allApps = currentState.appsByBucket.values.flatten()
+        val allApps = _appsByBucket.value.values.flatten()
 
         val filteredApps = if (query.isBlank()) {
             emptyList()
@@ -91,9 +102,9 @@ class HomeViewModel @Inject constructor(
             }
         }
 
-        _uiState.value = currentState.copy(
-            searchQuery = query,
-            searchResults = filteredApps
+        _searchState.value = _searchState.value.copy(
+            query = query,
+            results = filteredApps
         )
     }
 
@@ -103,31 +114,22 @@ class HomeViewModel @Inject constructor(
      * @param active Whether search mode should be active
      */
     fun setSearchActive(active: Boolean) {
-        val currentState = _uiState.value
-
         // If deactivating search, clear the search query and results
         if (!active) {
-            _uiState.value = currentState.copy(
-                isSearchActive = false,
-                searchQuery = "",
-                searchResults = emptyList()
-            )
+            _searchState.value = SearchState()
         } else {
-            _uiState.value = currentState.copy(
-                isSearchActive = true
+            _searchState.value = _searchState.value.copy(
+                isActive = true
             )
         }
     }
 }
 
 /**
- * UI state for the home screen.
+ * Search state for the home screen.
  */
-data class HomeUiState(
-    val isLoading: Boolean = true,
-    val pinnedApps: List<AppInfo> = emptyList(),
-    val appsByBucket: Map<RecencyBucket, List<AppInfo>> = emptyMap(),
-    val searchQuery: String = "",
-    val isSearchActive: Boolean = false,
-    val searchResults: List<AppInfo> = emptyList()
+data class SearchState(
+    val query: String = "",
+    val isActive: Boolean = false,
+    val results: List<AppInfo> = emptyList()
 )

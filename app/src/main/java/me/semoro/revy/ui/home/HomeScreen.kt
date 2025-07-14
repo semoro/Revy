@@ -53,7 +53,6 @@ import me.semoro.revy.util.AppLauncherUtils
  * Home screen showing the app grid.
  *
  * @param viewModel ViewModel for the home screen
- * @param appLauncherUtils Utility for launching apps
  */
 @Composable
 fun HomeScreen(
@@ -61,16 +60,20 @@ fun HomeScreen(
 ) {
     val context = LocalContext.current
     val appLauncherUtils = remember { AppLauncherUtils(context) }
-    val uiState by viewModel.uiState.collectAsState()
 
-    Box(modifier = Modifier.fillMaxSize().systemBarsPadding()) {
+    val pinnedApps by viewModel.pinnedApps.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
+
+    Box(modifier = Modifier
+        .fillMaxSize()
+        .systemBarsPadding()) {
         Column(
             modifier = Modifier.fillMaxSize()
         ) {
             // Pinned apps strip
-            if (uiState.pinnedApps.isNotEmpty()) {
+            if (pinnedApps.isNotEmpty()) {
                 PinnedAppsStrip(
-                    pinnedApps = uiState.pinnedApps,
+                    pinnedApps = pinnedApps,
                     onAppClick = { appLauncherUtils.launchApp(it.packageName) },
                     onAppLongClick = { viewModel.togglePinApp(it.packageName, false) }
                 )
@@ -79,7 +82,7 @@ fun HomeScreen(
             }
 
             // App grid by recency bucket
-            if (uiState.isLoading) {
+            if (isLoading) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
@@ -88,12 +91,9 @@ fun HomeScreen(
                 }
             } else {
                 AppGridByBucket(
-                    appsByBucket = uiState.appsByBucket,
+                    viewModel,
                     onAppClick = { appLauncherUtils.launchApp(it.packageName) },
                     onAppLongClick = { viewModel.togglePinApp(it.packageName, !it.isPinned) },
-                    uiState = uiState,
-                    onSearchQueryChange = { viewModel.updateSearchQuery(it) },
-                    onSearchActiveChange = { viewModel.setSearchActive(it) }
                 )
             }
         }
@@ -143,25 +143,21 @@ fun PinnedAppsStrip(
 /**
  * Grid of apps grouped by recency bucket.
  *
- * @param appsByBucket Map of recency bucket to list of apps
  * @param onAppClick Callback when an app is clicked
  * @param onAppLongClick Callback when an app is long-clicked
- * @param uiState Current UI state
- * @param onSearchQueryChange Callback when search query changes
- * @param onSearchActiveChange Callback when search active state changes
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun AppGridByBucket(
-    appsByBucket: Map<RecencyBucket, List<AppInfo>>,
+    viewModel: HomeViewModel = hiltViewModel(),
     onAppClick: (AppInfo) -> Unit,
-    onAppLongClick: (AppInfo) -> Unit,
-    uiState: HomeUiState = HomeUiState(),
-    onSearchQueryChange: (String) -> Unit = {},
-    onSearchActiveChange: (Boolean) -> Unit = {}
+    onAppLongClick: (AppInfo) -> Unit
 ) {
+    val appsByBucket by viewModel.appsByBucket.collectAsState()
+    val searchState by viewModel.searchState.collectAsState()
+
     // Create a list of pages, where each page contains a bucket and a subset of apps
-    val pages = remember(appsByBucket, uiState.searchQuery, uiState.isSearchActive, uiState.searchResults) {
+    val pages = remember(appsByBucket, searchState) {
         val pages = mutableListOf<Pair<RecencyBucket, List<AppInfo>>>()
 
         // The number of apps per page (4 columns x 7 rows)
@@ -188,9 +184,9 @@ fun AppGridByBucket(
         }
 
         // Add search page after regular pages
-        if (uiState.isSearchActive && uiState.searchResults.isNotEmpty()) {
+        if (searchState.isActive && searchState.results.isNotEmpty()) {
             // If search is active and we have results, add them to pages
-            val searchResults = uiState.searchResults.chunked(appsPerPage)
+            val searchResults = searchState.results.chunked(appsPerPage)
             searchResults.forEach { chunk ->
                 pages.add(Pair(RecencyBucket.SEARCH, chunk))
             }
@@ -215,9 +211,9 @@ fun AppGridByBucket(
             bucket = bucket,
             currentPage = pagerState.targetPage,
             pageCount = pages.size,
-            searchQuery = uiState.searchQuery,
-            onSearchQueryChange = onSearchQueryChange,
-            onSearchActiveChange = onSearchActiveChange
+            searchQuery = searchState.query,
+            onSearchQueryChange = { viewModel.updateSearchQuery(it) },
+            onSearchActiveChange = { viewModel.setSearchActive(it) }
         )
         HorizontalPager(
             state = pagerState,
@@ -325,9 +321,9 @@ fun BucketHeader(
                                 .size(8.dp)
                                 .clip(CircleShape)
                                 .background(
-                                    if (index == currentPage) 
-                                        MaterialTheme.colorScheme.primary 
-                                    else 
+                                    if (index == currentPage)
+                                        MaterialTheme.colorScheme.primary
+                                    else
                                         MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
                                 )
                         )
