@@ -1,12 +1,10 @@
 package me.semoro.revy.data.repository
 
 import android.app.usage.UsageEvents
-import android.app.usage.UsageEventsQuery
 import android.app.usage.UsageStatsManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.content.pm.ResolveInfo
 import android.graphics.Bitmap
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -20,6 +18,7 @@ import me.semoro.revy.data.local.room.AppUsageDao
 import me.semoro.revy.data.local.room.AppUsageEntity
 import me.semoro.revy.data.model.AppInfo
 import me.semoro.revy.data.model.RecencyBucket
+import me.semoro.revy.data.model.SlotInfo
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.math.max
@@ -33,7 +32,7 @@ interface AppUsageRepository {
      *
      * @return Flow of map of RecencyBucket to list of AppInfo objects
      */
-    fun getAppsByRecencyBucket(): Flow<Map<RecencyBucket, List<AppInfo>>>
+    fun getAppsWithUsageInfo(): Flow<List<AppInfo>>
 
     /**
      * Records that an app was launched.
@@ -42,6 +41,8 @@ interface AppUsageRepository {
      */
     suspend fun recordAppLaunch(packageName: String)
 
+
+    suspend fun removeUsageRecord(packageName: String)
     /**
      * Checks for app usage activity on the opening of the main app screen.
      * This should be called when the main screen is opened.
@@ -68,7 +69,7 @@ class AppUsageRepositoryImpl @Inject constructor(
 
     private val usageStatsManager = context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
 
-    private val appsByRecencyBucket = moleculeFlow(RecompositionMode.Immediate) {
+    private val appsWithUsageInfo = moleculeFlow(RecompositionMode.Immediate) {
         val packageManager = context.packageManager
         val activities: List<InstalledAppInfo> =
             remember {
@@ -106,19 +107,16 @@ class AppUsageRepositoryImpl @Inject constructor(
 
         // Sort apps within each bucket by recency
         val sortedApps = appInfos.sortedByDescending { it.lastUsedTimestamp }
-
-        // Group apps by recency bucket
-        val groupedApps = sortedApps.groupBy { app ->
-            RecencyBucket.fromTimestamp(app.lastUsedTimestamp)
-        }
-
-
-        groupedApps
+        sortedApps
     }
 
 
-    override fun getAppsByRecencyBucket(): Flow<Map<RecencyBucket, List<AppInfo>>> = appsByRecencyBucket
+    override fun getAppsWithUsageInfo(): Flow<List<AppInfo>> = appsWithUsageInfo
 
+
+    override suspend fun removeUsageRecord(packageName: String) {
+        appUsageDao.removeByPackageName(packageName)
+    }
 
     private suspend fun updateOrRecordLastUsedTime(packageName: String, timeStamp: Long) {
         val update = appUsageDao.updateLastUsedTimestamp(packageName, timeStamp)

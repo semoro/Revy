@@ -18,4 +18,8 @@ data class AppInfo(
     val icon: Bitmap,
     val lastUsedTimestamp: Long,
     val isPinned: Boolean = false
-)
+) : SlotInfo()
+
+sealed class SlotInfo {
+    object Gravestone: SlotInfo()
+}

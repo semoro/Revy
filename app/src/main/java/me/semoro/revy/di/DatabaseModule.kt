@@ -8,7 +8,10 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import me.semoro.revy.data.local.room.AppDatabase
+import me.semoro.revy.data.local.room.AppPositioningDao
 import me.semoro.revy.data.local.room.AppUsageDao
+import me.semoro.revy.data.repository.AppPositioningRepository
+import me.semoro.revy.data.repository.AppPositioningRepositoryImpl
 import me.semoro.revy.data.repository.AppUsageRepository
 import me.semoro.revy.data.repository.AppUsageRepositoryImpl
 import javax.inject.Singleton
@@ -48,5 +51,26 @@ object DatabaseModule {
         appUsageDao: AppUsageDao
     ): AppUsageRepository {
         return AppUsageRepositoryImpl(context, appUsageDao)
+    }
+
+    /**
+     * Provides the AppPositioningDao.
+     */
+    @Provides
+    @Singleton
+    fun provideAppPositioningDao(appDatabase: AppDatabase): AppPositioningDao {
+        return appDatabase.appPositioningDao()
+    }
+
+    /**
+     * Provides the AppPositioningRepository implementation.
+     */
+    @Provides
+    @Singleton
+    fun provideAppPositioningRepository(
+        @ApplicationContext context: Context,
+        appPositioningDao: AppPositioningDao
+    ): AppPositioningRepository {
+        return AppPositioningRepositoryImpl(context, appPositioningDao)
     }
 }

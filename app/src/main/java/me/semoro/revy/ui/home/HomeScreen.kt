@@ -57,6 +57,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import me.semoro.revy.data.model.AppInfo
+import me.semoro.revy.data.model.SlotInfo
 import me.semoro.revy.util.AppLauncherUtils
 
 /**
@@ -191,16 +192,18 @@ fun AppGridByBucket(
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             repeat(4) { col ->
                                 val app = pageApps.getOrNull(row * 4 + col)
-                                if (app != null) {
-                                    AppIcon(
-                                        modifier = Modifier.weight(1f),
-                                        app = app,
-                                        onClick = { onAppClick(app) },
-                                        onLongClick = { onAppLongClick(app) }
-                                    )
-                                } else {
-                                    Spacer(Modifier.weight(1f))
+                                when (app) {
+                                    is AppInfo -> {
+                                       AppIcon(
+                                           modifier = Modifier.weight(1f),
+                                           app = app,
+                                           onClick = { onAppClick(app) },
+                                           onLongClick = { onAppLongClick(app) }
+                                       )
+                                    }
+                                    null, SlotInfo.Gravestone -> Spacer(Modifier.weight(1f))
                                 }
+
                             }
                         }
                     }

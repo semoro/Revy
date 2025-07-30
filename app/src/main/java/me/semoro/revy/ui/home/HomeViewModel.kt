@@ -15,6 +15,8 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import me.semoro.revy.data.model.AppInfo
 import me.semoro.revy.data.model.RecencyBucket
+import me.semoro.revy.data.model.SlotInfo
+import me.semoro.revy.data.repository.AppPositioningRepository
 import me.semoro.revy.data.repository.AppUsageRepository
 import me.semoro.revy.util.AppLauncherUtils
 import javax.inject.Inject
@@ -29,7 +31,7 @@ sealed class Page {
      * @property bucket The recency bucket
      * @property apps The list of apps in this page
      */
-    data class BucketPage(val bucket: RecencyBucket, val apps: List<AppInfo>) : Page()
+    data class BucketPage(val bucket: RecencyBucket, val apps: List<SlotInfo>) : Page()
 
     /**
      * A page showing search results.
@@ -49,6 +51,7 @@ fun <T> compute(body: @Composable () -> T,) = vm.viewModelScope.launchMolecule(R
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val appUsageRepository: AppUsageRepository,
+    private val appPositioningRepository: AppPositioningRepository,
     val appLauncherUtils: AppLauncherUtils
 ) : ViewModel() {
 
@@ -57,23 +60,22 @@ class HomeViewModel @Inject constructor(
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
     // Apps by recency bucket
-    private val _appsByBucket = MutableStateFlow<Map<RecencyBucket, List<AppInfo>>>(emptyMap())
-    val appsByBucket: StateFlow<Map<RecencyBucket, List<AppInfo>>> = _appsByBucket.asStateFlow()
+    private val _appsWithUsageInfo = MutableStateFlow<List<AppInfo>>(emptyList())
 
     // Search state
     private val _searchState = MutableStateFlow(SearchState())
     val searchState: StateFlow<SearchState> = _searchState.asStateFlow()
 
     // Pages
-    val pages: StateFlow<List<Page>> = compute { createPages(appsByBucket, searchState) }
+    val pages: StateFlow<List<Page>> = compute { createPages(_appsWithUsageInfo, searchState) }
 
     init {
         viewModelScope.launch {
             _isLoading.value = true
             // Get apps by recency bucket with pinned status
-            appUsageRepository.getAppsByRecencyBucket().collectLatest { appsByBucket ->
+            appUsageRepository.getAppsWithUsageInfo().collectLatest { appsByBucket ->
                 // Update UI state
-                _appsByBucket.value = appsByBucket
+                _appsWithUsageInfo.value = appsByBucket
                 _isLoading.value = false
             }
         }
@@ -95,10 +97,10 @@ class HomeViewModel @Inject constructor(
      */
     @Composable
     private fun createPages(
-        appsByBucket: StateFlow<Map<RecencyBucket, List<AppInfo>>>,
+        appsWithUsageInfo: StateFlow<List<AppInfo>>,
         searchState: StateFlow<SearchState>
     ): List<Page> {
-        val appsByBucket by appsByBucket.collectAsState()
+        val appsWithUsageInfo by appsWithUsageInfo.collectAsState()
         val searchState by searchState.collectAsState()
         val pages = mutableListOf<Page>()
 
@@ -115,11 +117,16 @@ class HomeViewModel @Inject constructor(
             RecencyBucket.LAST_30_DAYS
         )
 
+        val appsByBucket = appsWithUsageInfo.groupBy {
+            RecencyBucket.fromTimestamp(it.lastUsedTimestamp)
+        }
+
         regularBuckets.forEach { bucket ->
             val apps = appsByBucket[bucket] ?: emptyList()
             if (apps.isNotEmpty()) {
+                val positioned = appPositioningRepository.positionIntoSlots(bucket.name, apps)
                 // Split apps into chunks of regularAppsPerPage
-                val chunkedApps = apps.chunked(regularAppsPerPage)
+                val chunkedApps = positioned.chunked(regularAppsPerPage)
 
                 // Add each chunk as a separate page with the same bucket
                 chunkedApps.forEach { chunk ->
@@ -146,7 +153,9 @@ class HomeViewModel @Inject constructor(
 
 
     fun onLongClick(packageName: String) {
-
+        viewModelScope.launch {
+            appUsageRepository.removeUsageRecord(packageName)
+        }
     }
 
     /**
@@ -155,7 +164,7 @@ class HomeViewModel @Inject constructor(
      * @param query The search query
      */
     fun updateSearchQuery(query: String) {
-        val allApps = _appsByBucket.value.values.flatten()
+        val allApps = _appsWithUsageInfo.value
 
         val filteredApps = if (query.isBlank()) {
             emptyList()

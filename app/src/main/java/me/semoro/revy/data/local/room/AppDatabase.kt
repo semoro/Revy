@@ -8,7 +8,7 @@ import androidx.room.RoomDatabase
 /**
  * Room database for the application.
  */
-@Database(entities = [AppUsageEntity::class], version = 1, exportSchema = false)
+@Database(entities = [AppUsageEntity::class, AppPositioningEntity::class], version = 2, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
     /**
      * Get the DAO for app usage.
@@ -16,6 +16,13 @@ abstract class AppDatabase : RoomDatabase() {
      * @return The app usage DAO
      */
     abstract fun appUsageDao(): AppUsageDao
+
+    /**
+     * Get the DAO for app positioning.
+     *
+     * @return The app positioning DAO
+     */
+    abstract fun appPositioningDao(): AppPositioningDao
 
     companion object {
         private const val DATABASE_NAME = "revy_database"
@@ -35,7 +42,10 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     DATABASE_NAME
-                ).build()
+                )
+                    .fallbackToDestructiveMigration(true)
+                    .build()
+
                 INSTANCE = instance
                 instance
             }

@@ -1,6 +1,7 @@
 package me.semoro.revy.data.local.room
 
 import androidx.room.Dao
+import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
@@ -45,4 +46,7 @@ interface AppUsageDao {
      */
     @Query("UPDATE app_usage SET lastUsedTimestamp = :timestamp WHERE packageName = :packageName AND lastUsedTimestamp < :timestamp")
     suspend fun updateLastUsedTimestamp(packageName: String, timestamp: Long): Int
+
+    @Query("DELETE FROM app_usage WHERE packageName = :packageName")
+    suspend fun removeByPackageName(packageName: String)
 }
