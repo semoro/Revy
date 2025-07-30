@@ -119,9 +119,17 @@ class AppUsageRepositoryImpl @Inject constructor(
 
     override fun getAppsByRecencyBucket(): Flow<Map<RecencyBucket, List<AppInfo>>> = appsByRecencyBucket
 
+
+    private suspend fun updateOrRecordLastUsedTime(packageName: String, timeStamp: Long) {
+        val update = appUsageDao.updateLastUsedTimestamp(packageName, timeStamp)
+        if (update == 0) {
+            appUsageDao.insertOrUpdate(AppUsageEntity(packageName, timeStamp))
+        }
+    }
+
     override suspend fun recordAppLaunch(packageName: String) {
         val timestamp = System.currentTimeMillis()
-        appUsageDao.updateLastUsedTimestamp(packageName, timestamp)
+        updateOrRecordLastUsedTime(packageName, timestamp)
     }
 
     override suspend fun checkAppUsageActivity() {
@@ -150,10 +158,7 @@ class AppUsageRepositoryImpl @Inject constructor(
         }
 
         for ((packageName, timeStamp) in compacted) {
-            val update = appUsageDao.updateLastUsedTimestamp(packageName, timeStamp)
-            if (update == 0) {
-                appUsageDao.insertOrUpdate(AppUsageEntity(packageName, timeStamp))
-            }
+            updateOrRecordLastUsedTime(packageName, timeStamp)
         }
     }
 }
