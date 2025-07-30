@@ -1,13 +1,20 @@
 package me.semoro.revy.ui.home
 
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import app.cash.molecule.RecompositionMode
+import app.cash.molecule.launchMolecule
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import me.semoro.revy.data.model.AppInfo
 import me.semoro.revy.data.model.RecencyBucket
@@ -36,6 +43,9 @@ sealed class Page {
     data class SearchPage(val query: String, val apps: List<AppInfo>) : Page()
 }
 
+context(vm: ViewModel)
+fun <T> compute(body: @Composable () -> T,) = vm.viewModelScope.launchMolecule(RecompositionMode.Immediate, body = body)
+
 /**
  * ViewModel for the home screen.
  */
@@ -62,20 +72,10 @@ class HomeViewModel @Inject constructor(
     val searchState: StateFlow<SearchState> = _searchState.asStateFlow()
 
     // Pages
-    private val _pages = MutableStateFlow<List<Page>>(emptyList())
-    val pages: StateFlow<List<Page>> = _pages.asStateFlow()
+    val pages: StateFlow<List<Page>> = compute { createPages(appsByBucket, searchState) }
 
     init {
         loadApps()
-
-        // Update pages whenever appsByBucket or searchState changes
-        viewModelScope.launch {
-            combine(_appsByBucket, _searchState) { appsByBucket, searchState ->
-                createPages(appsByBucket, searchState)
-            }.collect { pages ->
-                _pages.value = pages
-            }
-        }
     }
 
     /**
@@ -85,10 +85,13 @@ class HomeViewModel @Inject constructor(
      * @param searchState Current search state
      * @return List of pages
      */
+    @Composable
     private fun createPages(
-        appsByBucket: Map<RecencyBucket, List<AppInfo>>,
-        searchState: SearchState
+        appsByBucket: StateFlow<Map<RecencyBucket, List<AppInfo>>>,
+        searchState: StateFlow<SearchState>
     ): List<Page> {
+        val appsByBucket by appsByBucket.collectAsState()
+        val searchState by searchState.collectAsState()
         val pages = mutableListOf<Page>()
 
         // The number of apps per page

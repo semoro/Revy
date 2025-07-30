@@ -34,6 +34,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -55,6 +56,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import me.semoro.revy.data.model.AppInfo
 import me.semoro.revy.util.AppLauncherUtils
@@ -150,6 +152,11 @@ fun PinnedAppsStrip(
     }
 }
 
+@Composable
+operator fun <T> StateFlow<T>.provideDelegate(a: Any?, b: Any?): State<T> {
+    return this.collectAsState()
+}
+
 /**
  * Grid of apps grouped by recency bucket.
  *
@@ -163,8 +170,8 @@ fun AppGridByBucket(
     onAppClick: (AppInfo) -> Unit,
     onAppLongClick: (AppInfo) -> Unit
 ) {
-    val pages by viewModel.pages.collectAsState()
-    val searchState by viewModel.searchState.collectAsState()
+    val pages by viewModel.pages
+    val searchState by viewModel.searchState
 
     Column(modifier = Modifier.fillMaxSize()) {
         // Horizontal pager for swiping between pages
