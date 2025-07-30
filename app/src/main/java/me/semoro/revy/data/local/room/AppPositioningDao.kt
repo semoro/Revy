@@ -13,14 +13,6 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface AppPositioningDao {
     /**
-     * Insert or update an app positioning record.
-     *
-     * @param appPositioning The app positioning entity to insert or update
-     */
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertOrUpdate(appPositioning: AppPositioningEntity)
-
-    /**
      * Insert or update multiple app positioning records.
      *
      * @param appPositionings The app positioning entities to insert or update
@@ -35,16 +27,7 @@ interface AppPositioningDao {
      * @return Flow of list of all app positioning entities for the specified key, ordered by position
      */
     @Query("SELECT * FROM app_positioning WHERE `key` = :key ORDER BY position")
-    fun getAppPositioningsByKey(key: String): Flow<List<AppPositioningEntity>>
-
-    /**
-     * Get all app positioning records for a specific key.
-     *
-     * @param key The key to query
-     * @return List of all app positioning entities for the specified key, ordered by position
-     */
-    @Query("SELECT * FROM app_positioning WHERE `key` = :key ORDER BY position")
-    suspend fun getAppPositioningsByKeySync(key: String): List<AppPositioningEntity>
+    suspend fun getAppPositioningsByKey(key: String): List<AppPositioningEntity>
 
     /**
      * Delete all app positioning records for a specific key.
@@ -55,14 +38,11 @@ interface AppPositioningDao {
     suspend fun deleteByKey(key: String)
 
     /**
-     * Replace all app positioning records for a specific key.
+     * Delete app positioning records for a specific key and position greater than or equal to a value.
      *
-     * @param key The key to replace records for
-     * @param appPositionings The new app positioning entities
+     * @param key The key to delete records for
+     * @param position The position threshold
      */
-    @Transaction
-    suspend fun replaceByKey(key: String, appPositionings: List<AppPositioningEntity>) {
-        deleteByKey(key)
-        insertOrUpdateAll(appPositionings)
-    }
+    @Query("DELETE FROM app_positioning WHERE `key` = :key AND packageName NOT IN (:nameList)")
+    suspend fun deleteAbsent(key: String, nameList: List<String>)
 }

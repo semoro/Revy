@@ -68,9 +68,9 @@ object DatabaseModule {
     @Provides
     @Singleton
     fun provideAppPositioningRepository(
-        @ApplicationContext context: Context,
-        appPositioningDao: AppPositioningDao
+        appPositioningDao: AppPositioningDao,
+        appDatabase: AppDatabase
     ): AppPositioningRepository {
-        return AppPositioningRepositoryImpl(context, appPositioningDao)
+        return AppPositioningRepositoryImpl(appPositioningDao, appDatabase)
     }
 }

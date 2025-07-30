@@ -1,9 +1,10 @@
 package me.semoro.revy.data.repository
 
 import android.content.Context
+import androidx.room.withTransaction
 import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
+import me.semoro.revy.data.local.room.AppDatabase
 import me.semoro.revy.data.local.room.AppPositioningDao
 import me.semoro.revy.data.local.room.AppPositioningEntity
 import me.semoro.revy.data.model.AppInfo
@@ -18,8 +19,8 @@ interface AppPositioningRepository {
 
 @Singleton
 class AppPositioningRepositoryImpl @Inject constructor(
-    @param:ApplicationContext private val context: Context,
-    private val appPositioningDao: AppPositioningDao
+    private val appPositioningDao: AppPositioningDao,
+    private val db: AppDatabase
 ) : AppPositioningRepository {
 
     /**
@@ -32,82 +33,57 @@ class AppPositioningRepositoryImpl @Inject constructor(
         key: String,
         apps: List<AppInfo>
     ): List<SlotInfo> = runBlocking {
-        // Get the current positioning for this key
-        val currentPositioning = appPositioningDao.getAppPositioningsByKeySync(key)
-
         // Create a map of package name to app info for quick lookup
-        val appsByPackage = apps.associateBy { it.packageName }
+        val appsByPackage = apps.associateBy { it.packageName }.toMutableMap()
 
-        // Create a list to hold the result
-        val result = mutableListOf<SlotInfo>()
+        db.withTransaction {
+            // delete absents
+            appPositioningDao.deleteAbsent(key, apps.map { it.packageName })
+            val positions = appPositioningDao.getAppPositioningsByKey(key)
 
-        // If we have existing positioning data, use it to position the apps
-        if (currentPositioning.isNotEmpty()) {
-            // Create a set of package names that have been positioned
-            val positionedPackages = mutableSetOf<String>()
+            // Create a list to hold the result
+            val top = positions.maxOfOrNull { it.position } ?: 0
+            val result = MutableList<SlotInfo>(top + 1) {
+                SlotInfo.Gravestone
+            }
+            for (position in positions) {
+                result[position.position] =
+                    appsByPackage.remove(position.packageName)!! // Bind existing
+            }
+            val remaining = appsByPackage.values.toList()
+            val toSave = mutableListOf<AppPositioningEntity>()
 
-            // First, add all positioned apps and gravestones in their correct positions
-            for (position in currentPositioning) {
-                if (position.isGravestone) {
-                    // Add a gravestone
-                    result.add(SlotInfo.Gravestone)
-                } else {
-                    // Try to find the app in the provided list
-                    val app = appsByPackage[position.packageName]
-                    if (app != null) {
-                        // Add the app to the result
-                        result.add(app)
-                        positionedPackages.add(position.packageName)
-                    } else {
-                        // App no longer exists, add a gravestone instead
-                        result.add(SlotInfo.Gravestone)
+            fun insertOrAppend(toAdd: AppInfo) {
+                for ((idx, element) in result.withIndex()) {
+                    if (element == SlotInfo.Gravestone) {
+                        result[idx] = toAdd
+                        toSave.add(
+                            AppPositioningEntity(
+                                key = key,
+                                packageName = toAdd.packageName,
+                                position = idx
+                            )
+                        )
+                        return
                     }
                 }
-            }
-
-            // Add any new apps that weren't in the positioning data
-            val newApps = apps.filter { it.packageName !in positionedPackages }
-
-            // Try to fill gravestones with new apps
-            var newAppIndex = 0
-            for (i in result.indices) {
-                if (result[i] == SlotInfo.Gravestone && newAppIndex < newApps.size) {
-                    result[i] = newApps[newAppIndex]
-                    newAppIndex++
-                }
-            }
-
-            // If there are still new apps left, add them to the end
-            if (newAppIndex < newApps.size) {
-                result.addAll(newApps.subList(newAppIndex, newApps.size))
-            }
-        } else {
-            // No existing positioning data, just use the apps as they are
-            result.addAll(apps)
-        }
-
-        // Save the new positioning
-        val newPositioning = result.mapIndexed { index, slotInfo ->
-            when (slotInfo) {
-                is AppInfo -> AppPositioningEntity(
-                    key = key,
-                    packageName = slotInfo.packageName,
-                    position = index,
-                    isGravestone = false
-                )
-                SlotInfo.Gravestone -> AppPositioningEntity(
-                    key = key,
-                    packageName = "",
-                    position = index,
-                    isGravestone = true
+                val pos = result.size
+                result.add(toAdd)
+                toSave.add(
+                    AppPositioningEntity(
+                        key = key,
+                        packageName = toAdd.packageName,
+                        position = pos
+                    )
                 )
             }
+            for (it in remaining) {
+                insertOrAppend(it)
+            }
+            appPositioningDao.insertOrUpdateAll(toSave)
+
+            result
         }
 
-        // Update the database with the new positioning
-        appPositioningDao.replaceByKey(key, newPositioning)
-
-        // Return the result
-        result
     }
 }
