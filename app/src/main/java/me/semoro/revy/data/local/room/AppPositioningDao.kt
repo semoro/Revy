@@ -4,8 +4,6 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
-import androidx.room.Transaction
-import kotlinx.coroutines.flow.Flow
 
 /**
  * Data Access Object for the app_positioning table.
@@ -41,7 +39,6 @@ interface AppPositioningDao {
      * Delete app positioning records for a specific key and position greater than or equal to a value.
      *
      * @param key The key to delete records for
-     * @param position The position threshold
      */
     @Query("DELETE FROM app_positioning WHERE `key` = :key AND packageName NOT IN (:nameList)")
     suspend fun deleteAbsent(key: String, nameList: List<String>)

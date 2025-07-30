@@ -1,7 +1,6 @@
 package me.semoro.revy.data.model
 
 import android.graphics.Bitmap
-import android.graphics.drawable.Drawable
 
 /**
  * Represents information about an installed application.

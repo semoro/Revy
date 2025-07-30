@@ -85,7 +85,7 @@ class HomeViewModel @Inject constructor(
     /**
      * Creates pages based on apps by bucket and search state.
      *
-     * @param appsByBucket Apps grouped by recency bucket
+     * @param appsWithUsageInfo Apps with data on last used
      * @param searchState Current search state
      * @return List of pages
      */

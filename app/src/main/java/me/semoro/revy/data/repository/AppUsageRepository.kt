@@ -17,13 +17,9 @@ import kotlinx.coroutines.flow.Flow
 import me.semoro.revy.data.local.room.AppUsageDao
 import me.semoro.revy.data.local.room.AppUsageEntity
 import me.semoro.revy.data.model.AppInfo
-import me.semoro.revy.data.model.RecencyBucket
-import me.semoro.revy.data.model.SlotInfo
-import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.math.max
-import kotlin.time.Duration
 import kotlin.time.Duration.Companion.days
 import kotlin.time.DurationUnit
 

@@ -8,7 +8,6 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.lifecycle.lifecycleScope
-import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import me.semoro.revy.data.repository.AppUsageRepository
@@ -30,7 +29,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         window.setFlags(
             WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER,
-            WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER);
+            WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER)
 
 
         enableEdgeToEdge(

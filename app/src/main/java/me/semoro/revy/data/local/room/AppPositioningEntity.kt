@@ -11,7 +11,6 @@ import androidx.room.PrimaryKey
  * @property key The key identifying a specific set of slots
  * @property packageName The package name of the application
  * @property position The position of the app in the slot layout
- * @property isGravestone Whether this slot is a gravestone (empty slot)
  */
 @Entity(tableName = "app_positioning",
     indices = [Index("key"), Index("packageName")]

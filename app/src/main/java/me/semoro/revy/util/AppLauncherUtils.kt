@@ -2,7 +2,6 @@ package me.semoro.revy.util
 
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -43,30 +42,9 @@ class AppLauncherUtils @Inject constructor(
             } else {
                 false
             }
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             false
         }
     }
 
-    /**
-     * Gets the app shortcuts for an app.
-     *
-     * @param packageName The package name of the app
-     * @return List of app shortcuts
-     */
-    fun getAppShortcuts(packageName: String): List<AppShortcut> {
-        // This is a simplified implementation that doesn't actually fetch shortcuts
-        // In a real implementation, we would use the ShortcutManager API
-        return emptyList()
-    }
-
-    /**
-     * Represents an app shortcut.
-     */
-    data class AppShortcut(
-        val id: String,
-        val shortLabel: String,
-        val longLabel: String,
-        val intent: Intent
-    )
 }

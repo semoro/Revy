@@ -22,7 +22,6 @@ interface AppPositioningRepository {
     /**
      * Packs apps by removing all gravestones and rearranging apps to fill in the empty slots.
      * 
-     * @param key The key to pack apps for
      * @return The number of gravestones removed
      */
     suspend fun packApps(): Int
@@ -38,7 +37,6 @@ class AppPositioningRepositoryImpl @Inject constructor(
     /**
      * Packs apps by removing all gravestones and rearranging apps to fill in the empty slots.
      * 
-     * @param key The key to pack apps for
      * @return The number of gravestones removed
      */
     override suspend fun packApps(): Int = db.withTransaction {
