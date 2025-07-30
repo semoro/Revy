@@ -1,6 +1,10 @@
 package me.semoro.revy.data.repository
 
 import androidx.room.withTransaction
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.runBlocking
 import me.semoro.revy.data.local.room.AppDatabase
 import me.semoro.revy.data.local.room.AppPositioningDao
@@ -13,6 +17,8 @@ import javax.inject.Singleton
 interface AppPositioningRepository {
     fun positionIntoSlots(key: String, apps: List<AppInfo>): List<SlotInfo>
 
+
+    val packingGeneration: StateFlow<Int>
     /**
      * Packs apps by removing all gravestones and rearranging apps to fill in the empty slots.
      * 
@@ -65,6 +71,7 @@ class AppPositioningRepositoryImpl @Inject constructor(
             appPositioningDao.insertOrUpdateAll(newPositions)
 
         }
+        _packingGeneration.update { it + 1 }
         totalRemoved
     }
 
@@ -131,4 +138,7 @@ class AppPositioningRepositoryImpl @Inject constructor(
         }
 
     }
+
+    private val _packingGeneration = MutableStateFlow(0)
+    override val packingGeneration: StateFlow<Int> = _packingGeneration.asStateFlow()
 }

@@ -3,6 +3,7 @@ package me.semoro.revy.ui.home
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.cash.molecule.RecompositionMode
@@ -114,10 +115,15 @@ class HomeViewModel @Inject constructor(
             RecencyBucket.fromTimestamp(it.lastUsedTimestamp)
         }
 
+        val packingGeneration by appPositioningRepository.packingGeneration.collectAsState()
+
         regularBuckets.forEach { bucket ->
             val apps = appsByBucket[bucket] ?: emptyList()
             if (apps.isNotEmpty()) {
-                val positioned = appPositioningRepository.positionIntoSlots(bucket.name, apps)
+                val positioned = remember(bucket.name, packingGeneration, apps) {
+                    appPositioningRepository.positionIntoSlots(bucket.name, apps)
+                }
+
                 // Split apps into chunks of regularAppsPerPage
                 val chunkedApps = positioned.chunked(regularAppsPerPage)
 
