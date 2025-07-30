@@ -68,7 +68,18 @@ class HomeViewModel @Inject constructor(
     val pages: StateFlow<List<Page>> = compute { createPages(appsByBucket, searchState) }
 
     init {
-        loadApps()
+        viewModelScope.launch {
+            _isLoading.value = true
+            // Get apps by recency bucket with pinned status
+            appUsageRepository.getAppsByRecencyBucket().collectLatest { appsByBucket ->
+                // Update UI state
+                _appsByBucket.value = appsByBucket
+                _isLoading.value = false
+            }
+        }
+    }
+
+    fun onResume() {
         // Check for app usage activity when the main screen opens
         viewModelScope.launch {
             appUsageRepository.checkAppUsageActivity()
@@ -132,32 +143,10 @@ class HomeViewModel @Inject constructor(
         return pages
     }
 
-    /**
-     * Loads the apps and updates the UI state.
-     */
-    private fun loadApps() {
-        viewModelScope.launch {
-            _isLoading.value = true
-            // Get apps by recency bucket with pinned status
-            appUsageRepository.getAppsByRecencyBucket().collectLatest { appsByBucket ->
-                // Update UI state
-                _appsByBucket.value = appsByBucket
-                _isLoading.value = false
-            }
-        }
-    }
 
 
     fun onLongClick(packageName: String) {
 
-    }
-
-    /**
-     * Refreshes the app list.
-     */
-    fun refreshApps() {
-        _isLoading.value = true
-        loadApps()
     }
 
     /**

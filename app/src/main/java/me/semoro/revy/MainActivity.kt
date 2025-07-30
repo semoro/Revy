@@ -36,6 +36,5 @@ class MainActivity : ComponentActivity() {
                 NavGraph(permissionUtils = permissionUtils)
             }
         }
-
     }
 }

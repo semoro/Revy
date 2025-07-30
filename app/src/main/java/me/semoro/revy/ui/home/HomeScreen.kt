@@ -30,6 +30,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
@@ -70,6 +71,11 @@ fun HomeScreen(
     val appLauncherUtils = viewModel.appLauncherUtils
 
     val isLoading by viewModel.isLoading.collectAsState()
+
+    val context = LocalContext.current
+    LaunchedEffect(context) {
+        viewModel.onResume()
+    }
 
     Box(modifier = Modifier
         .fillMaxSize()

@@ -1,6 +1,7 @@
 package me.semoro.revy.di
 
 import android.content.Context
+import dagger.Binds
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -8,6 +9,8 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import me.semoro.revy.data.local.room.AppDatabase
 import me.semoro.revy.data.local.room.AppUsageDao
+import me.semoro.revy.data.repository.AppUsageRepository
+import me.semoro.revy.data.repository.AppUsageRepositoryImpl
 import javax.inject.Singleton
 
 /**
@@ -16,7 +19,7 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 object DatabaseModule {
-    
+
     /**
      * Provides the Room database instance.
      */
@@ -25,7 +28,7 @@ object DatabaseModule {
     fun provideAppDatabase(@ApplicationContext context: Context): AppDatabase {
         return AppDatabase.getInstance(context)
     }
-    
+
     /**
      * Provides the AppUsageDao.
      */
@@ -33,5 +36,17 @@ object DatabaseModule {
     @Singleton
     fun provideAppUsageDao(appDatabase: AppDatabase): AppUsageDao {
         return appDatabase.appUsageDao()
+    }
+
+    /**
+     * Provides the AppUsageRepository implementation.
+     */
+    @Provides
+    @Singleton
+    fun provideAppUsageRepository(
+        @ApplicationContext context: Context,
+        appUsageDao: AppUsageDao
+    ): AppUsageRepository {
+        return AppUsageRepositoryImpl(context, appUsageDao)
     }
 }

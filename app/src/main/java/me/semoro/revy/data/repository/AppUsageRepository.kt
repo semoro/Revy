@@ -1,13 +1,28 @@
 package me.semoro.revy.data.repository
 
+import android.app.usage.UsageEvents
+import android.app.usage.UsageEventsQuery
+import android.app.usage.UsageStatsManager
+import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.content.pm.ResolveInfo
+import android.graphics.Bitmap
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.core.graphics.drawable.toBitmap
+import app.cash.molecule.RecompositionMode
+import app.cash.molecule.moleculeFlow
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
-import me.semoro.revy.data.local.AppUsageDataSource
-import me.semoro.revy.data.local.AppUsageLocalDataSource
+import me.semoro.revy.data.local.room.AppUsageDao
+import me.semoro.revy.data.local.room.AppUsageEntity
 import me.semoro.revy.data.model.AppInfo
 import me.semoro.revy.data.model.RecencyBucket
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.math.max
 
 /**
  * Repository interface for accessing app usage data.
@@ -19,13 +34,6 @@ interface AppUsageRepository {
      * @return Flow of map of RecencyBucket to list of AppInfo objects
      */
     fun getAppsByRecencyBucket(): Flow<Map<RecencyBucket, List<AppInfo>>>
-
-    /**
-     * Checks if the app has permission to access usage statistics.
-     *
-     * @return true if the app has permission, false otherwise
-     */
-    fun hasUsageStatsPermission(): Boolean
 
     /**
      * Records that an app was launched.
@@ -41,57 +49,110 @@ interface AppUsageRepository {
     suspend fun checkAppUsageActivity()
 }
 
+
+
+data class InstalledAppInfo(
+    val packageName: String,
+    val label: String,
+    val icon: Bitmap,
+)
+
 /**
  * Implementation of AppUsageRepository.
  */
 @Singleton
 class AppUsageRepositoryImpl @Inject constructor(
-    private val appUsageDataSource: AppUsageDataSource,
-    private val appUsageLocalDataSource: AppUsageLocalDataSource
+    @param:ApplicationContext private val context: Context,
+    private val appUsageDao: AppUsageDao
 ) : AppUsageRepository {
 
-    override fun getAppsByRecencyBucket(): Flow<Map<RecencyBucket, List<AppInfo>>> = flow {
-        val apps = appUsageDataSource.getInstalledApps()
-        val now = System.currentTimeMillis()
+    private val usageStatsManager = context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
 
-        // Group apps by recency bucket
-        val groupedApps = apps.groupBy { app ->
-            RecencyBucket.fromTimestamp(app.lastUsedTimestamp)
+    private val appsByRecencyBucket = moleculeFlow(RecompositionMode.Immediate) {
+        val packageManager = context.packageManager
+        val activities: List<InstalledAppInfo> =
+            remember {
+                val intent = Intent(Intent.ACTION_MAIN)
+                intent.addCategory(Intent.CATEGORY_LAUNCHER)
+                val flags = PackageManager.ResolveInfoFlags.of(
+                    PackageManager.MATCH_ALL.toLong())
+
+                // Create AppInfo objects for each installed app
+                context.packageManager.queryIntentActivities(intent, flags).mapNotNull { appInfo ->
+                    try {
+                        val packageName = appInfo.activityInfo.packageName
+
+                        InstalledAppInfo(
+                            packageName = packageName,
+                            label = appInfo.loadLabel(packageManager).toString(),
+                            icon = appInfo.loadIcon(packageManager).toBitmap(),
+                        )
+                    } catch (_: Exception) {
+                        null
+                    }
+                }
+            }
+
+        val appUsages by appUsageDao.getAllAppUsage().collectAsState(emptyList())
+        val associated = appUsages.associateBy { it.packageName }
+        val appInfos = activities.map {
+            AppInfo(
+                it.packageName,
+                it.label,
+                it.icon,
+                associated[it.packageName]?.lastUsedTimestamp ?: 0L
+            )
         }
 
         // Sort apps within each bucket by recency
-        val sortedGroupedApps = groupedApps.mapValues { (_, apps) ->
-            apps.sortedByDescending { it.lastUsedTimestamp }
+        val sortedApps = appInfos.sortedByDescending { it.lastUsedTimestamp }
+
+        // Group apps by recency bucket
+        val groupedApps = sortedApps.groupBy { app ->
+            RecencyBucket.fromTimestamp(app.lastUsedTimestamp)
         }
 
-        emit(sortedGroupedApps)
+
+        groupedApps
     }
 
-    override fun hasUsageStatsPermission(): Boolean {
-        return appUsageDataSource.hasUsageStatsPermission()
-    }
+
+    override fun getAppsByRecencyBucket(): Flow<Map<RecencyBucket, List<AppInfo>>> = appsByRecencyBucket
 
     override suspend fun recordAppLaunch(packageName: String) {
         val timestamp = System.currentTimeMillis()
-        appUsageLocalDataSource.updateLastUsedTimestamp(packageName, timestamp)
+        appUsageDao.updateLastUsedTimestamp(packageName, timestamp)
     }
 
     override suspend fun checkAppUsageActivity() {
-        // This method is called when the main screen is opened
-        // Get the latest app usage data from the system
-        val installedApps = appUsageDataSource.getInstalledApps()
+        // Get usage stats for the last 30 days
+        val endTime = System.currentTimeMillis()
+        val startTime = endTime - (1 * 24 * 60 * 60 * 1000L) // 1 day in milliseconds
+        val usageEvents = usageStatsManager.queryEvents(
+            startTime, endTime
+        )
 
-        // Update the local database with the latest usage data
-        for (app in installedApps) {
-            // Only update if the app has been used (timestamp > 0)
-            if (app.lastUsedTimestamp > 0) {
-                // Check if we already have a record for this app
-                val existingAppUsage = appUsageLocalDataSource.getAppUsage(app.packageName)
+        if (usageEvents == null) {
+            println("Error, usage events is inaccessible")
+            return
+        }
 
-                // Only update if the system timestamp is more recent than our stored timestamp
-                if (existingAppUsage == null || app.lastUsedTimestamp > existingAppUsage.lastUsedTimestamp) {
-                    appUsageLocalDataSource.updateLastUsedTimestamp(app.packageName, app.lastUsedTimestamp)
-                }
+        val compacted = mutableMapOf<String, Long>()
+        while (usageEvents.hasNextEvent()) {
+            val event = UsageEvents.Event()
+            usageEvents.getNextEvent(event)
+            if (event.eventType == UsageEvents.Event.ACTIVITY_RESUMED) {
+                compacted[event.packageName] =
+                    compacted[event.packageName]?.let { other ->
+                        max(other, event.timeStamp)
+                    } ?: event.timeStamp
+            }
+        }
+
+        for ((packageName, timeStamp) in compacted) {
+            val update = appUsageDao.updateLastUsedTimestamp(packageName, timeStamp)
+            if (update == 0) {
+                appUsageDao.insertOrUpdate(AppUsageEntity(packageName, timeStamp))
             }
         }
     }

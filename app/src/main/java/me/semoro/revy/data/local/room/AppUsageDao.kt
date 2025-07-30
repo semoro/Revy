@@ -43,6 +43,6 @@ interface AppUsageDao {
      * @param timestamp The new timestamp
      * @return The number of rows updated
      */
-    @Query("UPDATE app_usage SET lastUsedTimestamp = :timestamp WHERE packageName = :packageName")
+    @Query("UPDATE app_usage SET lastUsedTimestamp = :timestamp WHERE packageName = :packageName AND lastUsedTimestamp < :timestamp")
     suspend fun updateLastUsedTimestamp(packageName: String, timestamp: Long): Int
 }
