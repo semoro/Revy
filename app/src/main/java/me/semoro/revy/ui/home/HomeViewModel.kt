@@ -16,6 +16,7 @@ import kotlinx.coroutines.launch
 import me.semoro.revy.data.model.AppInfo
 import me.semoro.revy.data.model.RecencyBucket
 import me.semoro.revy.data.repository.AppUsageRepository
+import me.semoro.revy.util.AppLauncherUtils
 import javax.inject.Inject
 
 /**
@@ -47,7 +48,8 @@ fun <T> compute(body: @Composable () -> T,) = vm.viewModelScope.launchMolecule(R
  */
 @HiltViewModel
 class HomeViewModel @Inject constructor(
-    private val appUsageRepository: AppUsageRepository
+    private val appUsageRepository: AppUsageRepository,
+    val appLauncherUtils: AppLauncherUtils
 ) : ViewModel() {
 
     // Loading state
@@ -67,6 +69,10 @@ class HomeViewModel @Inject constructor(
 
     init {
         loadApps()
+        // Check for app usage activity when the main screen opens
+        viewModelScope.launch {
+            appUsageRepository.checkAppUsageActivity()
+        }
     }
 
     /**

@@ -67,8 +67,7 @@ import me.semoro.revy.util.AppLauncherUtils
 fun HomeScreen(
     viewModel: HomeViewModel = hiltViewModel()
 ) {
-    val context = LocalContext.current
-    val appLauncherUtils = remember { AppLauncherUtils(context) }
+    val appLauncherUtils = viewModel.appLauncherUtils
 
     val isLoading by viewModel.isLoading.collectAsState()
 

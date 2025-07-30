@@ -4,6 +4,10 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import me.semoro.revy.data.repository.AppUsageRepository
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -12,10 +16,12 @@ import javax.inject.Singleton
  */
 @Singleton
 class AppLauncherUtils @Inject constructor(
-    @ApplicationContext private val context: Context
+    @param:ApplicationContext private val context: Context,
+    private val appUsageRepository: AppUsageRepository
 ) {
     private val packageManager = context.packageManager
-    
+    private val coroutineScope = CoroutineScope(Dispatchers.IO)
+
     /**
      * Launches an app by its package name.
      *
@@ -26,8 +32,13 @@ class AppLauncherUtils @Inject constructor(
         return try {
             val intent = packageManager.getLaunchIntentForPackage(packageName)
             if (intent != null) {
+                // Record app launch in the database
+                coroutineScope.launch {
+                    appUsageRepository.recordAppLaunch(packageName)
+                }
                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 context.startActivity(intent)
+
                 true
             } else {
                 false
@@ -36,7 +47,7 @@ class AppLauncherUtils @Inject constructor(
             false
         }
     }
-    
+
     /**
      * Gets the app shortcuts for an app.
      *
@@ -48,7 +59,7 @@ class AppLauncherUtils @Inject constructor(
         // In a real implementation, we would use the ShortcutManager API
         return emptyList()
     }
-    
+
     /**
      * Represents an app shortcut.
      */
