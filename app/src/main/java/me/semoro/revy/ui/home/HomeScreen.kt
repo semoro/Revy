@@ -73,11 +73,6 @@ fun HomeScreen(
 
     val isLoading by viewModel.isLoading.collectAsState()
 
-    val context = LocalContext.current
-    LaunchedEffect(context) {
-        viewModel.onResume()
-    }
-
     Box(modifier = Modifier
         .fillMaxSize()
         .systemBarsPadding()) {

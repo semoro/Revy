@@ -1,8 +1,6 @@
 package me.semoro.revy.data.repository
 
-import android.content.Context
 import androidx.room.withTransaction
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.runBlocking
 import me.semoro.revy.data.local.room.AppDatabase
 import me.semoro.revy.data.local.room.AppPositioningDao

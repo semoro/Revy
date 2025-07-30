@@ -19,9 +19,13 @@ import me.semoro.revy.data.local.room.AppUsageEntity
 import me.semoro.revy.data.model.AppInfo
 import me.semoro.revy.data.model.RecencyBucket
 import me.semoro.revy.data.model.SlotInfo
+import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.math.max
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.days
+import kotlin.time.DurationUnit
 
 /**
  * Repository interface for accessing app usage data.
@@ -68,6 +72,8 @@ class AppUsageRepositoryImpl @Inject constructor(
 ) : AppUsageRepository {
 
     private val usageStatsManager = context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
+
+    private var lastUsageCheckStamp = System.currentTimeMillis() - 1.days.toLong(DurationUnit.MILLISECONDS)
 
     private val appsWithUsageInfo = moleculeFlow(RecompositionMode.Immediate) {
         val packageManager = context.packageManager
@@ -133,7 +139,7 @@ class AppUsageRepositoryImpl @Inject constructor(
     override suspend fun checkAppUsageActivity() {
         // Get usage stats for the last 30 days
         val endTime = System.currentTimeMillis()
-        val startTime = endTime - (1 * 24 * 60 * 60 * 1000L) // 1 day in milliseconds
+        val startTime = lastUsageCheckStamp // 1 day in milliseconds
         val usageEvents = usageStatsManager.queryEvents(
             startTime, endTime
         )
@@ -142,6 +148,9 @@ class AppUsageRepositoryImpl @Inject constructor(
             println("Error, usage events is inaccessible")
             return
         }
+
+        // swap last usage check time
+        lastUsageCheckStamp = endTime
 
         val compacted = mutableMapOf<String, Long>()
         while (usageEvents.hasNextEvent()) {

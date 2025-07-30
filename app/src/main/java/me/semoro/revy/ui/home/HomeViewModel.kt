@@ -81,13 +81,6 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    fun onResume() {
-        // Check for app usage activity when the main screen opens
-        viewModelScope.launch {
-            appUsageRepository.checkAppUsageActivity()
-        }
-    }
-
     /**
      * Creates pages based on apps by bucket and search state.
      *
