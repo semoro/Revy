@@ -51,7 +51,7 @@ interface AppUsageRepository {
      * Checks for app usage activity on the opening of the main app screen.
      * This should be called when the main screen is opened.
      */
-    suspend fun checkAppUsageActivity()
+    suspend fun checkAppUsageActivity(rescan: Boolean = false)
 }
 
 
@@ -136,10 +136,14 @@ class AppUsageRepositoryImpl @Inject constructor(
         updateOrRecordLastUsedTime(packageName, timestamp)
     }
 
-    override suspend fun checkAppUsageActivity() {
-        // Get usage stats for the last 30 days
+    override suspend fun checkAppUsageActivity(rescan: Boolean) {
         val endTime = System.currentTimeMillis()
-        val startTime = lastUsageCheckStamp // 1 day in milliseconds
+        val startTime = if (!rescan) {
+            lastUsageCheckStamp
+        } else {
+            endTime - 1.days.toLong(DurationUnit.MILLISECONDS)
+        }
+
         val usageEvents = usageStatsManager.queryEvents(
             startTime, endTime
         )

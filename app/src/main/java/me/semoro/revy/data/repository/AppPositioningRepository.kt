@@ -12,6 +12,14 @@ import javax.inject.Singleton
 
 interface AppPositioningRepository {
     fun positionIntoSlots(key: String, apps: List<AppInfo>): List<SlotInfo>
+
+    /**
+     * Packs apps by removing all gravestones and rearranging apps to fill in the empty slots.
+     * 
+     * @param key The key to pack apps for
+     * @return The number of gravestones removed
+     */
+    suspend fun packApps(): Int
 }
 
 
@@ -20,6 +28,45 @@ class AppPositioningRepositoryImpl @Inject constructor(
     private val appPositioningDao: AppPositioningDao,
     private val db: AppDatabase
 ) : AppPositioningRepository {
+
+    /**
+     * Packs apps by removing all gravestones and rearranging apps to fill in the empty slots.
+     * 
+     * @param key The key to pack apps for
+     * @return The number of gravestones removed
+     */
+    override suspend fun packApps(): Int = db.withTransaction {
+
+        var totalRemoved = 0
+        for (key in appPositioningDao.getAllKeys()) {
+            val positions = appPositioningDao.getAppPositioningsByKey(key)
+
+            // Find all positions with apps (non-gravestones)
+            val nonGravestonePositions = positions.sortedBy { it.position }
+
+            println(positions)
+            val totalSlots = positions.maxOfOrNull { it.position }?.let { it + 1 } ?: 0
+            // Count how many gravestones will be removed
+            totalRemoved += totalSlots - nonGravestonePositions.size
+
+            // Create new positions without gravestones
+            val newPositions = nonGravestonePositions.mapIndexed { index, entity ->
+                AppPositioningEntity(
+                    key = entity.key,
+                    packageName = entity.packageName,
+                    position = index
+                )
+            }
+
+            // Delete all existing positions for this key
+            appPositioningDao.deleteByKey(key)
+
+            // Insert the new positions
+            appPositioningDao.insertOrUpdateAll(newPositions)
+
+        }
+        totalRemoved
+    }
 
     /**
      * Positions the given app info list according to the stored slots

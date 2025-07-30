@@ -45,4 +45,8 @@ interface AppPositioningDao {
      */
     @Query("DELETE FROM app_positioning WHERE `key` = :key AND packageName NOT IN (:nameList)")
     suspend fun deleteAbsent(key: String, nameList: List<String>)
+
+
+    @Query("SELECT DISTINCT(`key`) FROM app_positioning")
+    suspend fun getAllKeys(): List<String>
 }

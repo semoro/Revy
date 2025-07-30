@@ -10,6 +10,7 @@ import androidx.navigation.compose.rememberNavController
 import me.semoro.revy.ui.home.HomeScreen
 import me.semoro.revy.ui.permissions.PermissionScreen
 import me.semoro.revy.ui.permissions.PermissionViewModel
+import me.semoro.revy.ui.settings.SettingsScreen
 import me.semoro.revy.util.PermissionUtils
 
 /**
@@ -26,7 +27,7 @@ fun NavGraph(
     permissionUtils: PermissionUtils
 ) {
     val actions = remember(navController) { NavActions(navController) }
-    
+
     // Check if we have usage stats permission
     val permissionViewModel: PermissionViewModel = hiltViewModel()
 
@@ -36,7 +37,7 @@ fun NavGraph(
     } else {
         Screen.PERMISSION.route
     }
-    
+
     NavHost(
         navController = navController,
         startDestination = actualStartDestination
@@ -48,12 +49,19 @@ fun NavGraph(
                 permissionUtils = permissionUtils
             )
         }
-        
+
         // Home screen
         composable(Screen.HOME.route) {
-            HomeScreen()
+            HomeScreen(
+                onNavigateToSettings = actions.navigateToSettings
+            )
         }
-        
+
+        // Settings screen
+        composable(Screen.SETTINGS.route) {
+            SettingsScreen()
+        }
+
         // Other screens will be added later
     }
 }
@@ -62,7 +70,7 @@ fun NavGraph(
  * Navigation actions for the app.
  */
 class NavActions(private val navController: NavHostController) {
-    
+
     /**
      * Navigates to the home screen.
      */
@@ -73,6 +81,18 @@ class NavActions(private val navController: NavHostController) {
             popUpTo(navController.graph.startDestinationId) {
                 saveState = true
             }
+            // Avoid multiple copies of the same destination when reselecting the same item
+            launchSingleTop = true
+            // Restore state when reselecting a previously selected item
+            restoreState = true
+        }
+    }
+
+    /**
+     * Navigates to the settings screen.
+     */
+    val navigateToSettings: () -> Unit = {
+        navController.navigate(Screen.SETTINGS.route) {
             // Avoid multiple copies of the same destination when reselecting the same item
             launchSingleTop = true
             // Restore state when reselecting a previously selected item

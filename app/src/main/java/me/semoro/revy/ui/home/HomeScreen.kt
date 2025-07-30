@@ -25,8 +25,10 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -64,10 +66,12 @@ import me.semoro.revy.util.AppLauncherUtils
  * Home screen showing the app grid.
  *
  * @param viewModel ViewModel for the home screen
+ * @param onNavigateToSettings Callback to navigate to the settings screen
  */
 @Composable
 fun HomeScreen(
-    viewModel: HomeViewModel = hiltViewModel()
+    viewModel: HomeViewModel = hiltViewModel(),
+    onNavigateToSettings: () -> Unit = {}
 ) {
     val appLauncherUtils = viewModel.appLauncherUtils
 
@@ -93,6 +97,9 @@ fun HomeScreen(
                     viewModel,
                     onAppClick = { appLauncherUtils.launchApp(it.packageName) },
                     onAppLongClick = { viewModel.onLongClick(it.packageName) },
+                    onHeaderLongClick = {
+                        onNavigateToSettings()
+                    }
                 )
             }
         }
@@ -114,6 +121,7 @@ operator fun <T> StateFlow<T>.provideDelegate(a: Any?, b: Any?): State<T> {
 @Composable
 fun AppGridByBucket(
     viewModel: HomeViewModel = hiltViewModel(),
+    onHeaderLongClick: () -> Unit,
     onAppClick: (AppInfo) -> Unit,
     onAppLongClick: (AppInfo) -> Unit
 ) {
@@ -145,7 +153,8 @@ fun AppGridByBucket(
                     coroutineScope.launch {
                         pagerState.animateScrollToPage(pages.indexOfLast { it !is Page.SearchPage })
                     }
-                }
+                },
+                onHeaderLongClick = onHeaderLongClick
             )
         }
 
@@ -217,6 +226,7 @@ fun AppGridByBucket(
  * @param onSearchQueryChange Callback when search query changes
  * @param onSearchActiveChange Callback when search active state changes
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun BucketHeader(
     page: Page,
@@ -226,13 +236,15 @@ fun BucketHeader(
     searchQuery: String = "",
     onSearchQueryChange: (String) -> Unit = {},
     onSearchActiveChange: (Boolean) -> Unit = {},
-    onResetSearch: () -> Unit = {}
+    onResetSearch: () -> Unit = {},
+    onHeaderLongClick: () -> Unit = {}
 ) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.1f))
             .padding(horizontal = 16.dp, vertical = 8.dp)
+            .combinedClickable(onLongClick = onHeaderLongClick, onClick = {})
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
