@@ -6,7 +6,6 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -18,8 +17,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
@@ -73,7 +70,6 @@ fun HomeScreen(
     val context = LocalContext.current
     val appLauncherUtils = remember { AppLauncherUtils(context) }
 
-    val pinnedApps by viewModel.pinnedApps.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
 
     Box(modifier = Modifier
@@ -82,16 +78,6 @@ fun HomeScreen(
         Column(
             modifier = Modifier.fillMaxSize()
         ) {
-            // Pinned apps strip
-            if (pinnedApps.isNotEmpty()) {
-                PinnedAppsStrip(
-                    pinnedApps = pinnedApps,
-                    onAppClick = { appLauncherUtils.launchApp(it.packageName) },
-                    onAppLongClick = { viewModel.togglePinApp(it.packageName, false) }
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-            }
 
             // App grid by recency bucket
             if (isLoading) {
@@ -105,47 +91,7 @@ fun HomeScreen(
                 AppGridByBucket(
                     viewModel,
                     onAppClick = { appLauncherUtils.launchApp(it.packageName) },
-                    onAppLongClick = { viewModel.togglePinApp(it.packageName, !it.isPinned) },
-                )
-            }
-        }
-    }
-}
-
-/**
- * Strip of pinned apps at the top of the screen.
- *
- * @param pinnedApps List of pinned apps
- * @param onAppClick Callback when an app is clicked
- * @param onAppLongClick Callback when an app is long-clicked
- */
-@Composable
-fun PinnedAppsStrip(
-    pinnedApps: List<AppInfo>,
-    onAppClick: (AppInfo) -> Unit,
-    onAppLongClick: (AppInfo) -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(8.dp)
-    ) {
-        Text(
-            text = "Pinned",
-            style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-        )
-
-        LazyRow(
-            contentPadding = PaddingValues(horizontal = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            items(pinnedApps) { app ->
-                AppIcon(
-                    modifier = Modifier,
-                    app = app,
-                    onClick = { onAppClick(app) },
-                    onLongClick = { onAppLongClick(app) }
+                    onAppLongClick = { viewModel.onLongClick(it.packageName) },
                 )
             }
         }

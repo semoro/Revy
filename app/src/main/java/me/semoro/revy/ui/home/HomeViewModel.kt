@@ -8,18 +8,14 @@ import androidx.lifecycle.viewModelScope
 import app.cash.molecule.RecompositionMode
 import app.cash.molecule.launchMolecule
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import me.semoro.revy.data.model.AppInfo
 import me.semoro.revy.data.model.RecencyBucket
 import me.semoro.revy.data.repository.AppUsageRepository
-import me.semoro.revy.data.repository.PinnedAppsRepository
 import javax.inject.Inject
 
 /**
@@ -51,8 +47,7 @@ fun <T> compute(body: @Composable () -> T,) = vm.viewModelScope.launchMolecule(R
  */
 @HiltViewModel
 class HomeViewModel @Inject constructor(
-    private val appUsageRepository: AppUsageRepository,
-    private val pinnedAppsRepository: PinnedAppsRepository
+    private val appUsageRepository: AppUsageRepository
 ) : ViewModel() {
 
     // Loading state
@@ -62,10 +57,6 @@ class HomeViewModel @Inject constructor(
     // Apps by recency bucket
     private val _appsByBucket = MutableStateFlow<Map<RecencyBucket, List<AppInfo>>>(emptyMap())
     val appsByBucket: StateFlow<Map<RecencyBucket, List<AppInfo>>> = _appsByBucket.asStateFlow()
-
-    // Pinned apps
-    private val _pinnedApps = MutableStateFlow<List<AppInfo>>(emptyList())
-    val pinnedApps: StateFlow<List<AppInfo>> = _pinnedApps.asStateFlow()
 
     // Search state
     private val _searchState = MutableStateFlow(SearchState())
@@ -143,31 +134,16 @@ class HomeViewModel @Inject constructor(
             _isLoading.value = true
             // Get apps by recency bucket with pinned status
             appUsageRepository.getAppsByRecencyBucket().collectLatest { appsByBucket ->
-                // Get pinned apps
-                val pinnedApps = appsByBucket.values.flatten().filter { it.isPinned }
-
                 // Update UI state
                 _appsByBucket.value = appsByBucket
-                _pinnedApps.value = pinnedApps
                 _isLoading.value = false
             }
         }
     }
 
-    /**
-     * Pins or unpins an app.
-     *
-     * @param packageName The package name of the app to pin or unpin
-     * @param pin Whether to pin or unpin the app
-     */
-    fun togglePinApp(packageName: String, pin: Boolean) {
-        viewModelScope.launch {
-            if (pin) {
-                pinnedAppsRepository.pinApp(packageName)
-            } else {
-                pinnedAppsRepository.unpinApp(packageName)
-            }
-        }
+
+    fun onLongClick(packageName: String) {
+
     }
 
     /**
