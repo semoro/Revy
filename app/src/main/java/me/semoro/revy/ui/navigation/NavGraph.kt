@@ -4,9 +4,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
+import me.semoro.revy.ui.appsettings.AppSettingsScreen
 import me.semoro.revy.ui.home.HomeScreen
 import me.semoro.revy.ui.permissions.PermissionScreen
 import me.semoro.revy.ui.permissions.PermissionViewModel
@@ -53,13 +56,28 @@ fun NavGraph(
         // Home screen
         composable(Screen.HOME.route) {
             HomeScreen(
-                onNavigateToSettings = actions.navigateToSettings
+                onNavigateToSettings = actions.navigateToSettings,
+                onNavigateToAppSettings = actions.navigateToAppSettings
             )
         }
 
         // Settings screen
         composable(Screen.SETTINGS.route) {
             SettingsScreen()
+        }
+
+        // App-specific settings screen
+        composable(
+            route = Screen.APP_SETTINGS.route,
+            arguments = listOf(
+                navArgument("packageName") {
+                    type = NavType.StringType
+                }
+            )
+        ) {
+            AppSettingsScreen(
+                onNavigateBack = actions.navigateUp
+            )
         }
 
         // Other screens will be added later
@@ -98,5 +116,24 @@ class NavActions(private val navController: NavHostController) {
             // Restore state when reselecting a previously selected item
             restoreState = true
         }
+    }
+
+    /**
+     * Navigates to the app-specific settings screen.
+     *
+     * @param packageName The package name of the app
+     */
+    val navigateToAppSettings: (String) -> Unit = { packageName ->
+        navController.navigate("app_settings/$packageName") {
+            // Avoid multiple copies of the same destination when reselecting the same item
+            launchSingleTop = true
+        }
+    }
+
+    /**
+     * Navigates up in the navigation hierarchy.
+     */
+    val navigateUp: () -> Unit = {
+        navController.navigateUp()
     }
 }

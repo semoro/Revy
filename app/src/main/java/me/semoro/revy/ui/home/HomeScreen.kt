@@ -62,11 +62,13 @@ import me.semoro.revy.data.model.SlotInfo
  *
  * @param viewModel ViewModel for the home screen
  * @param onNavigateToSettings Callback to navigate to the settings screen
+ * @param onNavigateToAppSettings Callback to navigate to the app-specific settings screen
  */
 @Composable
 fun HomeScreen(
     viewModel: HomeViewModel = hiltViewModel(),
-    onNavigateToSettings: () -> Unit = {}
+    onNavigateToSettings: () -> Unit = {},
+    onNavigateToAppSettings: (String) -> Unit = {}
 ) {
     val appLauncherUtils = viewModel.appLauncherUtils
 
@@ -91,7 +93,7 @@ fun HomeScreen(
                 AppGridByBucket(
                     viewModel,
                     onAppClick = { appLauncherUtils.launchApp(it.packageName) },
-                    onAppLongClick = { viewModel.onLongClick(it.packageName) },
+                    onAppLongClick = { onNavigateToAppSettings(it.packageName) },
                     onHeaderLongClick = {
                         onNavigateToSettings()
                     }
