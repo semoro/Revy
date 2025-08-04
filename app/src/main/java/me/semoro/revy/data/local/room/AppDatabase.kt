@@ -8,7 +8,7 @@ import androidx.room.RoomDatabase
 /**
  * Room database for the application.
  */
-@Database(entities = [AppUsageEntity::class, AppPositioningEntity::class], version = 3, exportSchema = false)
+@Database(entities = [AppUsageEntity::class, AppPositioningEntity::class, AppSettingsEntity::class], version = 4, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
     /**
      * Get the DAO for app usage.
@@ -23,6 +23,13 @@ abstract class AppDatabase : RoomDatabase() {
      * @return The app positioning DAO
      */
     abstract fun appPositioningDao(): AppPositioningDao
+
+    /**
+     * Get the DAO for app settings.
+     *
+     * @return The app settings DAO
+     */
+    abstract fun appSettingsDao(): AppSettingsDao
 
     companion object {
         private const val DATABASE_NAME = "revy_database"

@@ -2,7 +2,7 @@ package me.semoro.revy.ui.appsettings
 
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
+import androidx.core.net.toUri
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -13,13 +13,13 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import me.semoro.revy.data.model.AppInfo
+import me.semoro.revy.data.repository.AppSettingsRepository
 import me.semoro.revy.data.repository.AppUsageRepository
 import me.semoro.revy.util.AppLauncherUtils
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import javax.inject.Inject
-import androidx.core.net.toUri
 
 /**
  * ViewModel for the app-specific settings screen.
@@ -27,6 +27,7 @@ import androidx.core.net.toUri
 @HiltViewModel
 class AppSettingsViewModel @Inject constructor(
     private val appUsageRepository: AppUsageRepository,
+    private val appSettingsRepository: AppSettingsRepository,
     private val appLauncherUtils: AppLauncherUtils,
     @param:ApplicationContext private val context: Context,
     savedStateHandle: SavedStateHandle
@@ -44,18 +45,29 @@ class AppSettingsViewModel @Inject constructor(
     val appInfo: StateFlow<AppInfo?> = _appInfo.asStateFlow()
 
     init {
-        // Load app info
+        // Load app info and settings
+        viewModelScope.launch {
+            // Load app settings
+            appSettingsRepository.getAppSettingsFlow(packageName).collect { settings ->
+                val showOnlyInSearch = settings?.showOnlyInSearch ?: false
+
+                // Update UI state with settings
+                _uiState.value = _uiState.value.copy(
+                    showOnlyInSearch = showOnlyInSearch
+                )
+            }
+        }
+
         viewModelScope.launch {
             appUsageRepository.getAppsWithUsageInfo().collect { apps ->
                 val app = apps.find { it.packageName == packageName }
                 _appInfo.value = app
-                
+
                 // Update UI state with app info
                 app?.let {
                     _uiState.value = _uiState.value.copy(
                         appName = it.label,
-                        lastUsedTime = formatLastUsedTime(it.lastUsedTimestamp),
-                        showOnlyInSearch = false // TODO: Implement this feature
+                        lastUsedTime = formatLastUsedTime(it.lastUsedTimestamp)
                     )
                 }
             }
@@ -69,7 +81,7 @@ class AppSettingsViewModel @Inject constructor(
         if (timestamp == 0L) {
             return "Never used"
         }
-        
+
         val date = Date(timestamp)
         val formatter = SimpleDateFormat("MMM dd, yyyy HH:mm", Locale.getDefault())
         return formatter.format(date)
@@ -98,11 +110,16 @@ class AppSettingsViewModel @Inject constructor(
      * Sets whether to show the app only in search.
      */
     fun setShowOnlyInSearch(showOnlyInSearch: Boolean) {
-        // TODO: Implement this feature
-        _uiState.value = _uiState.value.copy(
-            showOnlyInSearch = showOnlyInSearch,
-            statusMessage = if (showOnlyInSearch) "App will only show in search" else "App will show in all views"
-        )
+        viewModelScope.launch {
+            // Save the setting to the repository
+            appSettingsRepository.setShowOnlyInSearch(packageName, showOnlyInSearch)
+
+            // Update UI state
+            _uiState.value = _uiState.value.copy(
+                showOnlyInSearch = showOnlyInSearch,
+                statusMessage = if (showOnlyInSearch) "App will only show in search" else "App will show in all views"
+            )
+        }
     }
 
     /**

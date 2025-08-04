@@ -18,6 +18,7 @@ import me.semoro.revy.data.model.AppInfo
 import me.semoro.revy.data.model.RecencyBucket
 import me.semoro.revy.data.model.SlotInfo
 import me.semoro.revy.data.repository.AppPositioningRepository
+import me.semoro.revy.data.repository.AppSettingsRepository
 import me.semoro.revy.data.repository.AppUsageRepository
 import me.semoro.revy.util.AppLauncherUtils
 import javax.inject.Inject
@@ -53,6 +54,7 @@ fun <T> compute(body: @Composable () -> T,) = vm.viewModelScope.launchMolecule(R
 class HomeViewModel @Inject constructor(
     private val appUsageRepository: AppUsageRepository,
     private val appPositioningRepository: AppPositioningRepository,
+    private val appSettingsRepository: AppSettingsRepository,
     val appLauncherUtils: AppLauncherUtils
 ) : ViewModel() {
 
@@ -68,7 +70,7 @@ class HomeViewModel @Inject constructor(
     val searchState: StateFlow<SearchState> = _searchState.asStateFlow()
 
     // Pages
-    val pages: StateFlow<List<Page>> = compute { createPages(_appsWithUsageInfo, searchState) }
+    val pages: StateFlow<List<Page>> = compute { createPages() }
 
     init {
         viewModelScope.launch {
@@ -85,16 +87,14 @@ class HomeViewModel @Inject constructor(
     /**
      * Creates pages based on apps by bucket and search state.
      *
-     * @param appsWithUsageInfo Apps with data on last used
-     * @param searchState Current search state
      * @return List of pages
      */
     @Composable
-    private fun createPages(
-        appsWithUsageInfo: StateFlow<List<AppInfo>>,
-        searchState: StateFlow<SearchState>
-    ): List<Page> {
-        val appsWithUsageInfo by appsWithUsageInfo.collectAsState()
+    private fun createPages(): List<Page> {
+        val appsWithUsageInfo by _appsWithUsageInfo.collectAsState()
+        val appSettings by appSettingsRepository.getAllAppSettings().collectAsState(emptyList())
+
+        val appSettingsByPackage = appSettings.associateBy { it.packageName }
         val searchState by searchState.collectAsState()
         val pages = mutableListOf<Page>()
 
@@ -111,7 +111,14 @@ class HomeViewModel @Inject constructor(
             RecencyBucket.LAST_30_DAYS
         )
 
-        val appsByBucket = appsWithUsageInfo.groupBy {
+        // Filter out apps that should only be shown in search
+        val filteredApps = appsWithUsageInfo.filter { app ->
+            // If the app has a setting to show only in search, filter it out
+            // Otherwise, include it
+            appSettingsByPackage[app.packageName]?.showOnlyInSearch != true
+        }
+
+        val appsByBucket = filteredApps.groupBy {
             RecencyBucket.fromTimestamp(it.lastUsedTimestamp)
         }
 
@@ -147,14 +154,6 @@ class HomeViewModel @Inject constructor(
         }
 
         return pages
-    }
-
-
-
-    fun onLongClick(packageName: String) {
-        viewModelScope.launch {
-            appUsageRepository.removeUsageRecord(packageName)
-        }
     }
 
     /**
