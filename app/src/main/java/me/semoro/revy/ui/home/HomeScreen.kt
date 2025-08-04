@@ -19,7 +19,9 @@ import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.PagerDefaults
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicTextField
@@ -161,8 +163,8 @@ fun AppGridByBucket(
         HorizontalPager(
             state = pagerState,
             modifier = Modifier
-                .fillMaxSize()
-                .padding(top = 8.dp, bottom = 8.dp)
+                .fillMaxSize(),
+            contentPadding = PaddingValues(top = 8.dp, bottom = 8.dp)
         ) { pageIndex ->
             val page = pages.getOrNull(pageIndex)
 
