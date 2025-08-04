@@ -17,6 +17,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
@@ -41,6 +43,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
@@ -352,23 +355,43 @@ fun AppIcon(
     onClick: () -> Unit,
     onLongClick: () -> Unit
 ) {
+    // State to track if the icon is being clicked
+    var isClicked by remember { mutableStateOf(false) }
+
+    // Animate the scale based on click state
+    val scale by animateFloatAsState(
+        targetValue = if (isClicked) 0.8f else 1.0f,
+        animationSpec = tween(durationMillis = 100),
+        finishedListener = {
+            if (isClicked) {
+                // Launch the app after animation completes
+                onClick()
+                // Reset the click state
+                isClicked = false
+            }
+        }
+    )
+
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = modifier
             .width(72.dp)
             .height(86.dp)
             .combinedClickable(
-                onClick = { onClick() },
+                onClick = { 
+                    // Start the animation when clicked
+                    isClicked = true
+                },
                 onLongClick = { onLongClick() }
             )
     ) {
-
         val bitmap = remember(app) { app.icon.asImageBitmap() }
         androidx.compose.foundation.Image(
             bitmap = bitmap,
             contentDescription = app.label,
             modifier = Modifier
                 .size(56.dp)
+                .scale(scale) // Apply scale animation
         )
 
         Spacer(modifier = Modifier.height(4.dp))
