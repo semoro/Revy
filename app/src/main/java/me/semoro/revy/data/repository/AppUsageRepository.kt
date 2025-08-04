@@ -5,6 +5,7 @@ import android.app.usage.UsageStatsManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.pm.ResolveInfo
 import android.graphics.Bitmap
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -14,6 +15,8 @@ import app.cash.molecule.RecompositionMode
 import app.cash.molecule.moleculeFlow
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapNotNull
 import me.semoro.revy.data.local.room.AppUsageDao
 import me.semoro.revy.data.local.room.AppUsageEntity
 import me.semoro.revy.data.model.AppInfo
@@ -33,6 +36,9 @@ interface AppUsageRepository {
      * @return Flow of map of RecencyBucket to list of AppInfo objects
      */
     fun getAppsWithUsageInfo(): Flow<List<AppInfo>>
+
+
+    fun getAppWithUsageInfo(packageName: String): Flow<AppInfo>
 
     /**
      * Records that an app was launched.
@@ -71,7 +77,7 @@ class AppUsageRepositoryImpl @Inject constructor(
 
     private var lastUsageCheckStamp = System.currentTimeMillis() - 1.days.toLong(DurationUnit.MILLISECONDS)
 
-    private val appsWithUsageInfo = moleculeFlow(RecompositionMode.Immediate) {
+    private fun appUsageInfoWithFilter(predicate: (ResolveInfo) -> Boolean): Flow<List<AppInfo>> =  moleculeFlow(RecompositionMode.Immediate) {
         val packageManager = context.packageManager
         val activities: List<InstalledAppInfo> =
             remember {
@@ -81,7 +87,9 @@ class AppUsageRepositoryImpl @Inject constructor(
                     PackageManager.MATCH_ALL.toLong())
 
                 // Create AppInfo objects for each installed app
-                context.packageManager.queryIntentActivities(intent, flags).mapNotNull { appInfo ->
+                context.packageManager.queryIntentActivities(intent, flags)
+                    .filter { predicate(it) }
+                    .mapNotNull { appInfo ->
                     try {
                         val packageName = appInfo.activityInfo.packageName
 
@@ -112,8 +120,14 @@ class AppUsageRepositoryImpl @Inject constructor(
         sortedApps
     }
 
+    private val appsWithUsageInfo = appUsageInfoWithFilter { true }
+
 
     override fun getAppsWithUsageInfo(): Flow<List<AppInfo>> = appsWithUsageInfo
+
+    override fun getAppWithUsageInfo(packageName: String): Flow<AppInfo> = appUsageInfoWithFilter {
+        it.activityInfo.packageName == packageName
+    }.mapNotNull { it.firstOrNull() }
 
 
     override suspend fun removeUsageRecord(packageName: String) {

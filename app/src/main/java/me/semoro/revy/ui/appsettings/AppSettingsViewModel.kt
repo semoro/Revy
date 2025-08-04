@@ -59,12 +59,11 @@ class AppSettingsViewModel @Inject constructor(
         }
 
         viewModelScope.launch {
-            appUsageRepository.getAppsWithUsageInfo().collect { apps ->
-                val app = apps.find { it.packageName == packageName }
+            appUsageRepository.getAppWithUsageInfo(packageName).collect { app ->
                 _appInfo.value = app
 
                 // Update UI state with app info
-                app?.let {
+                app.let {
                     _uiState.value = _uiState.value.copy(
                         appName = it.label,
                         lastUsedTime = formatLastUsedTime(it.lastUsedTimestamp)
