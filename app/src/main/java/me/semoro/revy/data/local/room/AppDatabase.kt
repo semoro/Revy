@@ -8,7 +8,7 @@ import androidx.room.RoomDatabase
 /**
  * Room database for the application.
  */
-@Database(entities = [AppUsageEntity::class, AppPositioningEntity::class, AppSettingsEntity::class], version = 4, exportSchema = false)
+@Database(entities = [AppUsageEntity::class, AppPositioningEntity::class, AppSettingsEntity::class], version = 5, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
     /**
      * Get the DAO for app usage.
