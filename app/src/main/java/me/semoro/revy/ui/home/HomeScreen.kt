@@ -19,6 +19,8 @@ import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.LocalOverscrollConfiguration
+import androidx.compose.foundation.LocalOverscrollFactory
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerDefaults
@@ -34,6 +36,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
@@ -160,56 +163,62 @@ fun AppGridByBucket(
             )
         }
 
-        HorizontalPager(
-            state = pagerState,
-            modifier = Modifier
-                .fillMaxSize(),
-            contentPadding = PaddingValues(top = 8.dp, bottom = 8.dp)
-        ) { pageIndex ->
-            val page = pages.getOrNull(pageIndex)
+        CompositionLocalProvider(LocalOverscrollFactory provides null) {
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier
+                    .fillMaxSize(),
+                contentPadding = PaddingValues(top = 8.dp, bottom = 8.dp)
+            ) { pageIndex ->
+                val page = pages.getOrNull(pageIndex)
 
-            if (page != null) {
-                // Get apps based on page type
-                val pageApps = when (page) {
-                    is Page.BucketPage -> page.apps
-                    is Page.SearchPage -> page.apps
-                }
-
-                // Display apps in a grid
-                val rowCount = if (page is Page.SearchPage) 3 else 7
-
-                // Get IME padding
-                val imeVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
-                val imePadding = if (page is Page.SearchPage && imeVisible) {
-                    with(LocalDensity.current) {
-                        WindowInsets.ime.getBottom(this).toDp()
+                if (page != null) {
+                    // Get apps based on page type
+                    val pageApps = when (page) {
+                        is Page.BucketPage -> page.apps
+                        is Page.SearchPage -> page.apps
                     }
-                } else {
-                    0.dp
-                }
 
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(8.dp), 
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(bottom = imePadding)
-                ) {
-                    repeat(rowCount) { row ->
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            repeat(4) { col ->
-                                val app = pageApps.getOrNull(row * 4 + col)
-                                when (app) {
-                                    is AppInfo -> {
-                                       AppIcon(
-                                           modifier = Modifier.weight(1f),
-                                           app = app,
-                                           onClick = { onAppClick(app) },
-                                           onLongClick = { onAppLongClick(app) }
-                                       )
+                    // Display apps in a grid
+                    val rowCount = if (page is Page.SearchPage) 3 else 7
+
+                    // Get IME padding
+                    val imeVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
+                    val imePadding = if (page is Page.SearchPage && imeVisible) {
+                        with(LocalDensity.current) {
+                            WindowInsets.ime.getBottom(this).toDp()
+                        }
+                    } else {
+                        0.dp
+                    }
+
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(bottom = imePadding)
+                    ) {
+                        repeat(rowCount) { row ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                repeat(4) { col ->
+                                    val app = pageApps.getOrNull(row * 4 + col)
+                                    when (app) {
+                                        is AppInfo -> {
+                                            AppIcon(
+                                                modifier = Modifier.weight(1f),
+                                                app = app,
+                                                onClick = { onAppClick(app) },
+                                                onLongClick = { onAppLongClick(app) }
+                                            )
+                                        }
+
+                                        null, SlotInfo.Gravestone -> Spacer(Modifier.weight(1f))
                                     }
-                                    null, SlotInfo.Gravestone -> Spacer(Modifier.weight(1f))
-                                }
 
+                                }
                             }
                         }
                     }
