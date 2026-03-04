@@ -10,6 +10,7 @@ import me.semoro.revy.data.local.room.AppDatabase
 import me.semoro.revy.data.local.room.AppPositioningDao
 import me.semoro.revy.data.local.room.AppSettingsDao
 import me.semoro.revy.data.local.room.AppUsageDao
+import me.semoro.revy.data.local.room.AppUsageEventDao
 import me.semoro.revy.data.repository.AppPositioningRepository
 import me.semoro.revy.data.repository.AppPositioningRepositoryImpl
 import me.semoro.revy.data.repository.AppSettingsRepository
@@ -43,6 +44,13 @@ object DatabaseModule {
         return appDatabase.appUsageDao()
     }
 
+
+    @Provides
+    @Singleton
+    fun provideAppUsageEventDao(appDatabase: AppDatabase): AppUsageEventDao {
+        return appDatabase.appUsageEventDao()
+    }
+
     /**
      * Provides the AppUsageRepository implementation.
      */
@@ -50,9 +58,10 @@ object DatabaseModule {
     @Singleton
     fun provideAppUsageRepository(
         @ApplicationContext context: Context,
-        appUsageDao: AppUsageDao
+        appUsageDao: AppUsageDao,
+        appUsageEventDao: AppUsageEventDao
     ): AppUsageRepository {
-        return AppUsageRepositoryImpl(context, appUsageDao)
+        return AppUsageRepositoryImpl(context, appUsageDao, appUsageEventDao)
     }
 
     /**

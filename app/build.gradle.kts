@@ -91,6 +91,8 @@ dependencies {
     implementation(libs.kotlinx.serialization.core)
     implementation(libs.kotlinx.serialization.json)
 
+    implementation(libs.kotlinx.datetime)
+
     implementation(libs.molecule.runtime)
 
     // Room
@@ -103,4 +105,9 @@ kotlin {
     compilerOptions {
         freeCompilerArgs.add("-Xcontext-parameters")
     }
+}
+
+
+ksp {
+    arg("room.schemaLocation", project.projectDir.resolve("schema").absolutePath )
 }

@@ -11,6 +11,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
 import me.semoro.revy.data.model.AppInfo
 import me.semoro.revy.data.repository.AppSettingsRepository
@@ -20,6 +21,9 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import javax.inject.Inject
+import kotlin.time.Clock
+import kotlin.time.Duration.Companion.days
+import kotlin.time.ExperimentalTime
 
 /**
  * ViewModel for the app-specific settings screen.
@@ -43,6 +47,13 @@ class AppSettingsViewModel @Inject constructor(
     // App info
     private val _appInfo = MutableStateFlow<AppInfo?>(null)
     val appInfo: StateFlow<AppInfo?> = _appInfo.asStateFlow()
+
+    @OptIn(ExperimentalTime::class)
+    val usageTimestamps = flow {
+        val now = Clock.System.now()
+        val time = now - 91.days
+        emit(appUsageRepository.getRecentAppUsage(packageName, time.toEpochMilliseconds()).map { it.openTimestamp })
+    }
 
     init {
         // Load app info and settings

@@ -236,6 +236,12 @@ fun AppSettingsScreen(
             )
 
             Spacer(modifier = Modifier.weight(1f))
+            val timestamps by viewModel.usageTimestamps.collectAsState(emptyList())
+
+            Text("Usages (Last 90 days)")
+            AppUsageFrequencyDisplay(timestamps)
+
+            Spacer(modifier = Modifier.weight(1f))
 
             // Status message
             if (uiState.statusMessage.isNotEmpty()) {

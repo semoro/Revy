@@ -17,10 +17,11 @@ import app.cash.molecule.RecompositionMode
 import app.cash.molecule.moleculeFlow
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapNotNull
 import me.semoro.revy.data.local.room.AppUsageDao
 import me.semoro.revy.data.local.room.AppUsageEntity
+import me.semoro.revy.data.local.room.AppUsageEventDao
+import me.semoro.revy.data.local.room.AppUsageEventEntity
 import me.semoro.revy.data.model.AppInfo
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -57,6 +58,10 @@ interface AppUsageRepository {
      */
     suspend fun checkAppUsageActivity(rescan: Boolean = false)
 
+
+
+    suspend fun getRecentAppUsage(packageName: String, since: Long): List<AppUsageEventEntity>
+
     fun reloadApps()
 }
 
@@ -74,7 +79,8 @@ data class InstalledAppInfo(
 @Singleton
 class AppUsageRepositoryImpl @Inject constructor(
     @param:ApplicationContext private val context: Context,
-    private val appUsageDao: AppUsageDao
+    private val appUsageDao: AppUsageDao,
+    private val appUsageEventDao: AppUsageEventDao
 ) : AppUsageRepository {
 
     private val usageStatsManager = context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
@@ -173,20 +179,36 @@ class AppUsageRepositoryImpl @Inject constructor(
         lastUsageCheckStamp = endTime
 
         val compacted = mutableMapOf<String, Long>()
-        while (usageEvents.hasNextEvent()) {
-            val event = UsageEvents.Event()
-            usageEvents.getNextEvent(event)
-            if (event.eventType == UsageEvents.Event.ACTIVITY_RESUMED) {
-                compacted[event.packageName] =
-                    compacted[event.packageName]?.let { other ->
-                        max(other, event.timeStamp)
-                    } ?: event.timeStamp
+
+        val event = UsageEvents.Event()
+        val newEvents = buildList {
+            while (usageEvents.hasNextEvent()) {
+                usageEvents.getNextEvent(event)
+                if (event.eventType == UsageEvents.Event.ACTIVITY_RESUMED) {
+                    compacted[event.packageName] =
+                        compacted[event.packageName]?.let { other ->
+                            max(other, event.timeStamp)
+                        } ?: event.timeStamp
+                    add(AppUsageEventEntity(packageName = event.packageName, openTimestamp = event.timeStamp))
+                }
             }
         }
+        if (rescan) {
+            appUsageEventDao.removeAllEventsInRange(startTime, endTime)
+        }
+        appUsageEventDao.insertAllEvents(newEvents)
+        appUsageEventDao.cleanUpOutdatedEvents(startTime - 100.days.inWholeMilliseconds)
 
         for ((packageName, timeStamp) in compacted) {
             updateOrRecordLastUsedTime(packageName, timeStamp)
         }
+    }
+
+    override suspend fun getRecentAppUsage(
+        packageName: String,
+        since: Long
+    ): List<AppUsageEventEntity> {
+        return appUsageEventDao.getRecentEvents(packageName, since)
     }
 
     override fun reloadApps() {
