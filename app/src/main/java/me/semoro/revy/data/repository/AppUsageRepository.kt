@@ -9,7 +9,9 @@ import android.content.pm.ResolveInfo
 import android.graphics.Bitmap
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.core.graphics.drawable.toBitmap
 import app.cash.molecule.RecompositionMode
 import app.cash.molecule.moleculeFlow
@@ -54,6 +56,8 @@ interface AppUsageRepository {
      * This should be called when the main screen is opened.
      */
     suspend fun checkAppUsageActivity(rescan: Boolean = false)
+
+    fun reloadApps()
 }
 
 
@@ -77,10 +81,12 @@ class AppUsageRepositoryImpl @Inject constructor(
 
     private var lastUsageCheckStamp = System.currentTimeMillis() - 1.days.toLong(DurationUnit.MILLISECONDS)
 
+    private var appInfoReloadCounter by mutableIntStateOf(0)
+
     private fun appUsageInfoWithFilter(predicate: (ResolveInfo) -> Boolean): Flow<List<AppInfo>> =  moleculeFlow(RecompositionMode.Immediate) {
         val packageManager = context.packageManager
         val activities: List<InstalledAppInfo> =
-            remember {
+            remember(appInfoReloadCounter) {
                 val intent = Intent(Intent.ACTION_MAIN)
                 intent.addCategory(Intent.CATEGORY_LAUNCHER)
                 val flags = PackageManager.ResolveInfoFlags.of(
@@ -181,5 +187,9 @@ class AppUsageRepositoryImpl @Inject constructor(
         for ((packageName, timeStamp) in compacted) {
             updateOrRecordLastUsedTime(packageName, timeStamp)
         }
+    }
+
+    override fun reloadApps() {
+        appInfoReloadCounter++
     }
 }

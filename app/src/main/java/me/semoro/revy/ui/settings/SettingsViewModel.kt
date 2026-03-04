@@ -66,4 +66,12 @@ class SettingsViewModel @Inject constructor(
             }
         }
     }
+
+    fun reloadApps() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, statusMessage = "Reloading apps...") }
+            appUsageRepository.reloadApps()
+            _uiState.update { it.copy(isLoading = false, statusMessage = "Apps reloaded") }
+        }
+    }
 }

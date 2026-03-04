@@ -54,13 +54,13 @@ fun SettingsScreen(
             Text("Pack Apps (Clean Up Gravestones)")
         }
         
-        // Per-app settings button (TODO)
+        // Reload apps
         Button(
-            onClick = { /* TODO: Implement per-app settings */ },
+            onClick = { viewModel.reloadApps() },
             modifier = Modifier.fillMaxWidth(),
             enabled = !uiState.isLoading
         ) {
-            Text("Per-App Settings (TODO)")
+            Text("Reload Apps")
         }
         
         Spacer(modifier = Modifier.weight(1f))
