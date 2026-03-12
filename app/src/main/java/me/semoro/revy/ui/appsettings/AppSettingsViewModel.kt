@@ -14,6 +14,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
 import me.semoro.revy.data.model.AppInfo
+import me.semoro.revy.data.repository.AppFrequencyRepository
+import me.semoro.revy.data.repository.FrequencyScoreBreakdown
 import me.semoro.revy.data.repository.AppSettingsRepository
 import me.semoro.revy.data.repository.AppUsageRepository
 import me.semoro.revy.util.AppLauncherUtils
@@ -32,6 +34,7 @@ import kotlin.time.ExperimentalTime
 class AppSettingsViewModel @Inject constructor(
     private val appUsageRepository: AppUsageRepository,
     private val appSettingsRepository: AppSettingsRepository,
+    private val appFrequencyRepository: AppFrequencyRepository,
     private val appLauncherUtils: AppLauncherUtils,
     @param:ApplicationContext private val context: Context,
     savedStateHandle: SavedStateHandle
@@ -53,6 +56,10 @@ class AppSettingsViewModel @Inject constructor(
         val now = Clock.System.now()
         val time = now - 91.days
         emit(appUsageRepository.getRecentAppUsage(packageName, time.toEpochMilliseconds()).map { it.openTimestamp })
+    }
+
+    val frequencyScoreBreakdown = flow {
+        emit(appFrequencyRepository.getScoreBreakdown(packageName))
     }
 
     init {

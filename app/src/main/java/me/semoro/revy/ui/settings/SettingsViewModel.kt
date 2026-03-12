@@ -51,7 +51,7 @@ class SettingsViewModel @Inject constructor(
     fun setLayoutMode(mode: LayoutMode) {
         viewModelScope.launch {
             layoutModePreferenceManager.setLayoutMode(mode)
-            if (mode == LayoutMode.FREQUENCY) {
+            if (mode == LayoutMode.FREQUENCY || mode == LayoutMode.FREQUENCY_BUCKETED) {
                 // Check if scores are empty and initialize if needed
                 val scores = appFrequencyRepository.getAppsByFrequency().first()
                 if (scores.isEmpty()) {

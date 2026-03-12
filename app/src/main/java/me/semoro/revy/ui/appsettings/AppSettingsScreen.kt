@@ -236,6 +236,33 @@ fun AppSettingsScreen(
             )
 
             Spacer(modifier = Modifier.weight(1f))
+//
+//            val breakdown by viewModel.frequencyScoreBreakdown.collectAsState(null)
+//            breakdown?.let { b ->
+//                Text("Frequency Score", style = MaterialTheme.typography.titleSmall)
+//                Row(
+//                    modifier = Modifier.fillMaxWidth(),
+//                    horizontalArrangement = Arrangement.SpaceBetween
+//                ) {
+//                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+//                        Text("3 days", style = MaterialTheme.typography.labelSmall)
+//                        Text("${b.count3d}", style = MaterialTheme.typography.bodyLarge)
+//                    }
+//                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+//                        Text("10 days", style = MaterialTheme.typography.labelSmall)
+//                        Text("${b.count10d}", style = MaterialTheme.typography.bodyLarge)
+//                    }
+//                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+//                        Text("30 days", style = MaterialTheme.typography.labelSmall)
+//                        Text("${b.count30d}", style = MaterialTheme.typography.bodyLarge)
+//                    }
+//                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+//                        Text("Score", style = MaterialTheme.typography.labelSmall)
+//                        Text("%.3f".format(b.score), style = MaterialTheme.typography.bodyLarge)
+//                    }
+//                }
+//            }
+
             val timestamps by viewModel.usageTimestamps.collectAsState(emptyList())
 
             Text("Usages (Last 90 days)")

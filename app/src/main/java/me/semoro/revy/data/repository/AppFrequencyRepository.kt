@@ -9,11 +9,19 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.random.Random
 
+data class FrequencyScoreBreakdown(
+    val count3d: Int,
+    val count10d: Int,
+    val count30d: Int,
+    val score: Double
+)
+
 interface AppFrequencyRepository {
     fun getAppsByFrequency(): Flow<List<AppFrequencyScoreEntity>>
     suspend fun recalculateScore(packageName: String)
     suspend fun processStaleScores()
     suspend fun initializeAllScores(packageNames: List<String>)
+    suspend fun getScoreBreakdown(packageName: String): FrequencyScoreBreakdown
 }
 
 @Singleton
@@ -66,5 +74,14 @@ class AppFrequencyRepositoryImpl @Inject constructor(
                 recalculateScore(packageName)
             }
         }
+    }
+
+    override suspend fun getScoreBreakdown(packageName: String): FrequencyScoreBreakdown {
+        val now = System.currentTimeMillis()
+        val count3d = appUsageEventDao.countEventsSince(packageName, now - TimeUnit.DAYS.toMillis(3))
+        val count10d = appUsageEventDao.countEventsSince(packageName, now - TimeUnit.DAYS.toMillis(10))
+        val count30d = appUsageEventDao.countEventsSince(packageName, now - TimeUnit.DAYS.toMillis(30))
+        val score = (count3d / 3.0) * 0.5 + (count10d / 10.0) * 0.3 + (count30d / 30.0) * 0.2
+        return FrequencyScoreBreakdown(count3d, count10d, count30d, score)
     }
 }

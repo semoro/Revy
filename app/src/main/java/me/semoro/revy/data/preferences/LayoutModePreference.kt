@@ -12,9 +12,10 @@ import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
 
-enum class LayoutMode {
-    RECENCY,
-    FREQUENCY
+enum class LayoutMode(val label: String) {
+    RECENCY("Recency"),
+    FREQUENCY("Frequency"),
+    FREQUENCY_BUCKETED("FreqBuckets")
 }
 
 private val Context.layoutDataStore: DataStore<Preferences> by preferencesDataStore(name = "layout_preferences")

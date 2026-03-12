@@ -35,24 +35,21 @@ fun SettingsScreen(
             textAlign = TextAlign.Center
         )
         
-        // Layout mode toggle
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "Frequency Layout",
-                style = MaterialTheme.typography.bodyLarge
-            )
-            Switch(
-                checked = uiState.layoutMode == LayoutMode.FREQUENCY,
-                onCheckedChange = { checked ->
-                    viewModel.setLayoutMode(
-                        if (checked) LayoutMode.FREQUENCY else LayoutMode.RECENCY
-                    )
+        // Layout mode selector
+        Text(
+            text = "Layout Mode",
+            style = MaterialTheme.typography.bodyLarge
+        )
+        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+            LayoutMode.entries.forEachIndexed { index, mode ->
+                SegmentedButton(
+                    selected = uiState.layoutMode == mode,
+                    onClick = { viewModel.setLayoutMode(mode) },
+                    shape = SegmentedButtonDefaults.itemShape(index, LayoutMode.entries.size)
+                ) {
+                    Text(mode.label)
                 }
-            )
+            }
         }
 
         Spacer(modifier = Modifier.height(16.dp))

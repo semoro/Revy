@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import me.semoro.revy.data.model.AppInfo
+import me.semoro.revy.data.model.FrequencyBucket
 import me.semoro.revy.data.model.RecencyBucket
 import me.semoro.revy.data.model.SlotInfo
 import me.semoro.revy.data.preferences.LayoutMode
@@ -39,11 +40,19 @@ sealed class Page {
     data class BucketPage(val bucket: RecencyBucket, val apps: List<SlotInfo>) : Page()
 
     /**
-     * A page showing apps ranked by usage frequency.
+     * A page showing apps ranked by usage frequency (flat).
      *
      * @property apps The list of apps in this page
      */
     data class FrequencyPage(val apps: List<SlotInfo>) : Page()
+
+    /**
+     * A page showing apps from a frequency bucket (daily/weekly/monthly).
+     *
+     * @property bucket The frequency bucket
+     * @property apps The list of apps in this page
+     */
+    data class FrequencyBucketPage(val bucket: FrequencyBucket, val apps: List<SlotInfo>) : Page()
 
     /**
      * A page showing search results.
@@ -154,7 +163,10 @@ class HomeViewModel @Inject constructor(
 
             LayoutMode.FREQUENCY -> {
                 val scoresByPackage = frequencyScores.associate { it.packageName to it.score }
-                val sortedApps = filteredApps.sortedByDescending { scoresByPackage[it.packageName] ?: 0.0 }
+                // Skip apps with zero score (no uses in last 30 days)
+                val sortedApps = filteredApps
+                    .filter { (scoresByPackage[it.packageName] ?: 0.0) > 0.0 }
+                    .sortedByDescending { scoresByPackage[it.packageName] ?: 0.0 }
 
                 val positioned = remember("FREQUENCY", packingGeneration, sortedApps) {
                     appPositioningRepository.positionIntoSlots("FREQUENCY", sortedApps)
@@ -164,6 +176,34 @@ class HomeViewModel @Inject constructor(
                 val chunkedApps = positioned.chunked(regularAppsPerPage).take(3)
                 chunkedApps.forEach { chunk ->
                     pages.add(Page.FrequencyPage(chunk))
+                }
+            }
+
+            LayoutMode.FREQUENCY_BUCKETED -> {
+                val scoresByPackage = frequencyScores.associate { it.packageName to it.score }
+
+                val appsByBucket = filteredApps
+                    .mapNotNull { app ->
+                        val score = scoresByPackage[app.packageName] ?: 0.0
+                        val bucket = FrequencyBucket.fromScore(score)
+                        bucket?.let { it to app }
+                    }
+                    .groupBy({ it.first }, { it.second })
+
+                FrequencyBucket.entries.forEach { bucket ->
+                    val apps = appsByBucket[bucket] ?: emptyList()
+                    if (apps.isNotEmpty()) {
+                        val key = "FREQ_${bucket.name}"
+                        val sortedApps = apps.sortedByDescending { scoresByPackage[it.packageName] ?: 0.0 }
+                        val positioned = remember(key, packingGeneration, sortedApps) {
+                            appPositioningRepository.positionIntoSlots(key, sortedApps)
+                        }
+
+                        val chunkedApps = positioned.chunked(regularAppsPerPage)
+                        chunkedApps.forEach { chunk ->
+                            pages.add(Page.FrequencyBucketPage(bucket, chunk))
+                        }
+                    }
                 }
             }
         }
