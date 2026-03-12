@@ -6,8 +6,13 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import me.semoro.revy.data.preferences.LayoutMode
+import me.semoro.revy.data.preferences.LayoutModePreferenceManager
+import me.semoro.revy.data.repository.AppFrequencyRepository
 import me.semoro.revy.data.repository.AppPositioningRepository
 import me.semoro.revy.data.repository.AppUsageRepository
 import javax.inject.Inject
@@ -17,7 +22,8 @@ import javax.inject.Inject
  */
 data class SettingsUiState(
     val isLoading: Boolean = false,
-    val statusMessage: String = ""
+    val statusMessage: String = "",
+    val layoutMode: LayoutMode = LayoutMode.RECENCY
 )
 
 /**
@@ -26,11 +32,35 @@ data class SettingsUiState(
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     private val appUsageRepository: AppUsageRepository,
-    private val appPositioningRepository: AppPositioningRepository
+    private val appPositioningRepository: AppPositioningRepository,
+    private val layoutModePreferenceManager: LayoutModePreferenceManager,
+    private val appFrequencyRepository: AppFrequencyRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SettingsUiState())
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            layoutModePreferenceManager.layoutMode.collectLatest { mode ->
+                _uiState.update { it.copy(layoutMode = mode) }
+            }
+        }
+    }
+
+    fun setLayoutMode(mode: LayoutMode) {
+        viewModelScope.launch {
+            layoutModePreferenceManager.setLayoutMode(mode)
+            if (mode == LayoutMode.FREQUENCY) {
+                // Check if scores are empty and initialize if needed
+                val scores = appFrequencyRepository.getAppsByFrequency().first()
+                if (scores.isEmpty()) {
+                    val allApps = appUsageRepository.getAppsWithUsageInfo().first()
+                    appFrequencyRepository.initializeAllScores(allApps.map { it.packageName })
+                }
+            }
+        }
+    }
 
     /**
      * Rescans usage events to update app usage data.

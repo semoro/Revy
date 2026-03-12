@@ -176,6 +176,7 @@ fun AppGridByBucket(
                     // Get apps based on page type
                     val pageApps = when (page) {
                         is Page.BucketPage -> page.apps
+                        is Page.FrequencyPage -> page.apps
                         is Page.SearchPage -> page.apps
                     }
 
@@ -310,6 +311,20 @@ fun BucketHeader(
 
                     Text(
                         text = page.bucket.title,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+
+                is Page.FrequencyPage -> {
+                    LaunchedEffect(Unit) {
+                        if (searchQuery.isNotEmpty()) {
+                            onSearchActiveChange(false)
+                        }
+                    }
+
+                    Text(
+                        text = "Most Used",
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurface
                     )

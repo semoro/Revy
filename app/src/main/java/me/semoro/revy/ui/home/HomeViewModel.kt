@@ -17,6 +17,9 @@ import kotlinx.coroutines.launch
 import me.semoro.revy.data.model.AppInfo
 import me.semoro.revy.data.model.RecencyBucket
 import me.semoro.revy.data.model.SlotInfo
+import me.semoro.revy.data.preferences.LayoutMode
+import me.semoro.revy.data.preferences.LayoutModePreferenceManager
+import me.semoro.revy.data.repository.AppFrequencyRepository
 import me.semoro.revy.data.repository.AppPositioningRepository
 import me.semoro.revy.data.repository.AppSettingsRepository
 import me.semoro.revy.data.repository.AppUsageRepository
@@ -34,6 +37,13 @@ sealed class Page {
      * @property apps The list of apps in this page
      */
     data class BucketPage(val bucket: RecencyBucket, val apps: List<SlotInfo>) : Page()
+
+    /**
+     * A page showing apps ranked by usage frequency.
+     *
+     * @property apps The list of apps in this page
+     */
+    data class FrequencyPage(val apps: List<SlotInfo>) : Page()
 
     /**
      * A page showing search results.
@@ -55,6 +65,8 @@ class HomeViewModel @Inject constructor(
     private val appUsageRepository: AppUsageRepository,
     private val appPositioningRepository: AppPositioningRepository,
     private val appSettingsRepository: AppSettingsRepository,
+    private val layoutModePreferenceManager: LayoutModePreferenceManager,
+    private val appFrequencyRepository: AppFrequencyRepository,
     val appLauncherUtils: AppLauncherUtils
 ) : ViewModel() {
 
@@ -93,6 +105,8 @@ class HomeViewModel @Inject constructor(
     private fun createPages(): List<Page> {
         val appsWithUsageInfo by _appsWithUsageInfo.collectAsState()
         val appSettings by appSettingsRepository.getAllAppSettings().collectAsState(emptyList())
+        val layoutMode by layoutModePreferenceManager.layoutMode.collectAsState(LayoutMode.RECENCY)
+        val frequencyScores by appFrequencyRepository.getAppsByFrequency().collectAsState(emptyList())
 
         val appSettingsByPackage = appSettings.associateBy { it.packageName }
         val searchState by searchState.collectAsState()
@@ -104,52 +118,63 @@ class HomeViewModel @Inject constructor(
         // Search pages: 4 columns x 3 rows
         val searchAppsPerPage = 12
 
-        // First, add all regular recency bucket pages
-        val regularBuckets = listOf(
-            RecencyBucket.TODAY,
-            RecencyBucket.THIS_WEEK,
-            RecencyBucket.LAST_30_DAYS
-        )
-
         // Filter out apps that should only be shown in search
         val filteredApps = appsWithUsageInfo.filter { app ->
-            // If the app has a setting to show only in search, filter it out
-            // Otherwise, include it
             appSettingsByPackage[app.packageName]?.showOnlyInSearch != true
-        }
-
-        val appsByBucket = filteredApps.groupBy {
-            RecencyBucket.fromTimestamp(it.lastUsedTimestamp)
         }
 
         val packingGeneration by appPositioningRepository.packingGeneration.collectAsState()
 
-        regularBuckets.forEach { bucket ->
-            val apps = appsByBucket[bucket] ?: emptyList()
-            if (apps.isNotEmpty()) {
-                val positioned = remember(bucket.name, packingGeneration, apps) {
-                    appPositioningRepository.positionIntoSlots(bucket.name, apps)
+        when (layoutMode) {
+            LayoutMode.RECENCY -> {
+                val regularBuckets = listOf(
+                    RecencyBucket.TODAY,
+                    RecencyBucket.THIS_WEEK,
+                    RecencyBucket.LAST_30_DAYS
+                )
+
+                val appsByBucket = filteredApps.groupBy {
+                    RecencyBucket.fromTimestamp(it.lastUsedTimestamp)
                 }
 
-                // Split apps into chunks of regularAppsPerPage
-                val chunkedApps = positioned.chunked(regularAppsPerPage)
+                regularBuckets.forEach { bucket ->
+                    val apps = appsByBucket[bucket] ?: emptyList()
+                    if (apps.isNotEmpty()) {
+                        val positioned = remember(bucket.name, packingGeneration, apps) {
+                            appPositioningRepository.positionIntoSlots(bucket.name, apps)
+                        }
 
-                // Add each chunk as a separate page with the same bucket
+                        val chunkedApps = positioned.chunked(regularAppsPerPage)
+                        chunkedApps.forEach { chunk ->
+                            pages.add(Page.BucketPage(bucket, chunk))
+                        }
+                    }
+                }
+            }
+
+            LayoutMode.FREQUENCY -> {
+                val scoresByPackage = frequencyScores.associate { it.packageName to it.score }
+                val sortedApps = filteredApps.sortedByDescending { scoresByPackage[it.packageName] ?: 0.0 }
+
+                val positioned = remember("FREQUENCY", packingGeneration, sortedApps) {
+                    appPositioningRepository.positionIntoSlots("FREQUENCY", sortedApps)
+                }
+
+                // Cap at 3 pages max (top 84 apps)
+                val chunkedApps = positioned.chunked(regularAppsPerPage).take(3)
                 chunkedApps.forEach { chunk ->
-                    pages.add(Page.BucketPage(bucket, chunk))
+                    pages.add(Page.FrequencyPage(chunk))
                 }
             }
         }
 
         // Add search page
         if (searchState.isActive && searchState.results.isNotEmpty()) {
-            // If search is active and we have results, add them to pages
             val searchResults = searchState.results.chunked(searchAppsPerPage)
             searchResults.forEach { chunk ->
                 pages.add(Page.SearchPage(searchState.query, chunk))
             }
         } else {
-            // Add an empty search page
             pages.add(Page.SearchPage(searchState.query, emptyList()))
         }
 

@@ -10,6 +10,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.lifecycle.lifecycleScope
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
+import me.semoro.revy.data.repository.AppFrequencyRepository
 import me.semoro.revy.data.repository.AppUsageRepository
 import me.semoro.revy.ui.navigation.NavGraph
 import me.semoro.revy.ui.theme.RevyTheme
@@ -24,6 +25,9 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var appUsageRepository: AppUsageRepository
+
+    @Inject
+    lateinit var appFrequencyRepository: AppFrequencyRepository
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -48,6 +52,7 @@ class MainActivity : ComponentActivity() {
         super.onResume()
         this.lifecycleScope.launch {
             appUsageRepository.checkAppUsageActivity()
+            appFrequencyRepository.processStaleScores()
         }
     }
 }

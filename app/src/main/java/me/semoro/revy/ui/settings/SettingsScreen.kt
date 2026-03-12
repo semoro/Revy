@@ -8,6 +8,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import me.semoro.revy.data.preferences.LayoutMode
 
 /**
  * Settings/Technical screen where users can perform technical actions.
@@ -34,8 +35,28 @@ fun SettingsScreen(
             textAlign = TextAlign.Center
         )
         
+        // Layout mode toggle
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Frequency Layout",
+                style = MaterialTheme.typography.bodyLarge
+            )
+            Switch(
+                checked = uiState.layoutMode == LayoutMode.FREQUENCY,
+                onCheckedChange = { checked ->
+                    viewModel.setLayoutMode(
+                        if (checked) LayoutMode.FREQUENCY else LayoutMode.RECENCY
+                    )
+                }
+            )
+        }
+
         Spacer(modifier = Modifier.height(16.dp))
-        
+
         // Rescan usage events button
         Button(
             onClick = { viewModel.rescanUsageEvents() },

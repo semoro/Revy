@@ -17,6 +17,9 @@ import me.semoro.revy.data.repository.AppSettingsRepository
 import me.semoro.revy.data.repository.AppSettingsRepositoryImpl
 import me.semoro.revy.data.repository.AppUsageRepository
 import me.semoro.revy.data.repository.AppUsageRepositoryImpl
+import me.semoro.revy.data.local.room.AppFrequencyScoreDao
+import me.semoro.revy.data.repository.AppFrequencyRepository
+import me.semoro.revy.data.repository.AppFrequencyRepositoryImpl
 import javax.inject.Singleton
 
 /**
@@ -103,5 +106,20 @@ object DatabaseModule {
         appSettingsDao: AppSettingsDao
     ): AppSettingsRepository {
         return AppSettingsRepositoryImpl(appSettingsDao)
+    }
+
+    @Provides
+    @Singleton
+    fun provideAppFrequencyScoreDao(appDatabase: AppDatabase): AppFrequencyScoreDao {
+        return appDatabase.appFrequencyScoreDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideAppFrequencyRepository(
+        appFrequencyScoreDao: AppFrequencyScoreDao,
+        appUsageEventDao: AppUsageEventDao
+    ): AppFrequencyRepository {
+        return AppFrequencyRepositoryImpl(appFrequencyScoreDao, appUsageEventDao)
     }
 }

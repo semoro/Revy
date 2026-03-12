@@ -6,6 +6,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import me.semoro.revy.data.repository.AppFrequencyRepository
 import me.semoro.revy.data.repository.AppUsageRepository
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -16,7 +17,8 @@ import javax.inject.Singleton
 @Singleton
 class AppLauncherUtils @Inject constructor(
     @param:ApplicationContext private val context: Context,
-    private val appUsageRepository: AppUsageRepository
+    private val appUsageRepository: AppUsageRepository,
+    private val appFrequencyRepository: AppFrequencyRepository
 ) {
     private val packageManager = context.packageManager
     private val coroutineScope = CoroutineScope(Dispatchers.IO)
@@ -34,6 +36,7 @@ class AppLauncherUtils @Inject constructor(
                 // Record app launch in the database
                 coroutineScope.launch {
                     appUsageRepository.recordAppLaunch(packageName)
+                    appFrequencyRepository.recalculateScore(packageName)
                 }
                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 context.startActivity(intent)

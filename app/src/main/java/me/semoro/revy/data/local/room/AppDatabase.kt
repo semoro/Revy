@@ -10,14 +10,18 @@ import androidx.room.RoomDatabase
  * Room database for the application.
  */
 @Database(
-    entities = [AppUsageEntity::class, AppPositioningEntity::class, AppSettingsEntity::class, AppUsageEventEntity::class],
+    entities = [AppUsageEntity::class, AppPositioningEntity::class, AppSettingsEntity::class, AppUsageEventEntity::class, AppFrequencyScoreEntity::class],
     autoMigrations = [
         AutoMigration(
             from = 5,
             to = 6
+        ),
+        AutoMigration(
+            from = 6,
+            to = 7
         )
     ],
-    version = 6, exportSchema = true
+    version = 7, exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
     /**
@@ -42,6 +46,8 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun appSettingsDao(): AppSettingsDao
 
     abstract fun appUsageEventDao(): AppUsageEventDao
+
+    abstract fun appFrequencyScoreDao(): AppFrequencyScoreDao
 
     companion object {
         private const val DATABASE_NAME = "revy_database"

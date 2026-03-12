@@ -22,4 +22,7 @@ interface AppUsageEventDao {
 
     @Query("SELECT * FROM app_usage_event WHERE packageName=:packageName AND openTimestamp >= :sinceTime")
     suspend fun getRecentEvents(packageName: String, sinceTime: Long): List<AppUsageEventEntity>
+
+    @Query("SELECT COUNT(*) FROM app_usage_event WHERE packageName = :packageName AND openTimestamp >= :sinceTime")
+    suspend fun countEventsSince(packageName: String, sinceTime: Long): Int
 }
